@@ -110,24 +110,18 @@ git commit -m "feat: add specific feature"
 - Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
 
-## Plan Review Loop
+## Plan Review
 
-After completing each chunk of the plan:
+After saving the plan, run a multi-model critical review before offering execution choices.
 
-1. Dispatch plan-document-reviewer subagent (see plan-document-reviewer-prompt.md) with precisely crafted review context — never your session history. This keeps the reviewer focused on the plan, not your thought process.
-   - Provide: chunk content, path to spec document
-2. If ❌ Issues Found:
-   - Fix the issues in the chunk
-   - Re-dispatch reviewer for that chunk
-   - Repeat until ✅ Approved
-3. If ✅ Approved: proceed to next chunk (or execution handoff if last chunk)
+**Run:** `/plan-review` with the full plan text as the argument.
 
-**Chunk boundaries:** Use `## Chunk N: <name>` headings to delimit chunks. Each chunk should be ≤1000 lines and logically self-contained.
+The `/plan-review` command has its own logic, just run it as instructed and wait for the response.
 
-**Review loop guidance:**
-- Same agent that wrote the plan fixes it (preserves context)
-- If loop exceeds 5 iterations, surface to human for guidance
-- Reviewers are advisory - explain disagreements if you believe feedback is incorrect
+**After the review completes:**
+- If the revised plan has meaningful changes, update the plan file with the revised version and commit
+- If the original plan is already lean, note that and proceed
+- Either way, continue to Execution Handoff
 
 ## Execution Handoff
 

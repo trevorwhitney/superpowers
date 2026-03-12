@@ -60,7 +60,9 @@ digraph process {
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
-    "Dispatch final code reviewer subagent for entire implementation" [shape=box];
+    "Run /code-review with full diff of all changes" [shape=box];
+    "Surviving findings?" [shape=diamond];
+    "Dispatch implementer subagent to fix code review findings" [shape=box];
     "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
@@ -79,8 +81,11 @@ digraph process {
     "Code quality reviewer subagent approves?" -> "Mark task complete in TodoWrite" [label="yes"];
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
-    "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
-    "Dispatch final code reviewer subagent for entire implementation" -> "Use superpowers:finishing-a-development-branch";
+    "More tasks remain?" -> "Run /code-review with full diff of all changes" [label="no"];
+    "Run /code-review with full diff of all changes" -> "Surviving findings?";
+    "Surviving findings?" -> "Dispatch implementer subagent to fix code review findings" [label="yes"];
+    "Dispatch implementer subagent to fix code review findings" -> "Run /code-review with full diff of all changes" [label="re-review"];
+    "Surviving findings?" -> "Use superpowers:finishing-a-development-branch" [label="no"];
 }
 ```
 
@@ -193,11 +198,36 @@ Code reviewer: ✅ Approved
 ...
 
 [After all tasks]
-[Dispatch final code-reviewer]
-Final reviewer: All requirements met, ready to merge
+[Run /code-review with git diff of all changes]
+Code review debate:
+  Reviewer A: Found 2 issues (magic constant, missing error handling)
+  Reviewer B: Challenged magic constant finding
+  Rebuttal: Magic constant finding dropped, error handling confirmed
+  Synthesis: 1 surviving finding - missing error handling in parser
 
+[Dispatch implementer to fix]
+Implementer: Added error handling, committed
+
+[Re-run /code-review]
+Code review debate: No surviving findings
+
+[Use superpowers:finishing-a-development-branch]
 Done!
 ```
+
+## Final Code Review
+
+After all tasks are complete, run a multi-model critical code review of the entire implementation.
+
+**Run:** `/code-review` with the full `git diff` of all changes since the plan started (use the base commit SHA captured at the start).
+
+The `/code-review` command has its own logic, just run it as instructed and wait for the response.
+
+**After the debate completes:**
+- If there are surviving findings, dispatch an implementer subagent to fix them
+- Re-run `/code-review` after fixes
+- Repeat until clean
+- Then proceed to finishing-a-development-branch
 
 ## Advantages
 
@@ -220,7 +250,8 @@ Done!
 
 **Quality gates:**
 - Self-review catches issues before handoff
-- Two-stage review: spec compliance, then code quality
+- Two-stage per-task review: spec compliance, then code quality
+- Multi-model critical final code review (findings must survive cross-examination)
 - Review loops ensure fixes actually work
 - Spec compliance prevents over/under-building
 - Code quality ensures implementation is well-built
@@ -236,6 +267,7 @@ Done!
 **Never:**
 - Start implementation on main/master branch without explicit user consent
 - Skip reviews (spec compliance OR code quality)
+- Skip the final `/code-review` (per-task reviews passing doesn't replace holistic review)
 - Proceed with unfixed issues
 - Dispatch multiple implementation subagents in parallel (conflicts)
 - Make subagent read plan file (provide full text instead)
