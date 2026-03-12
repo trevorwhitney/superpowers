@@ -16,6 +16,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Context:** This should be run in a dedicated worktree (created by brainstorming skill).
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+
 - (User preferences for plan location override this default)
 
 ## Scope Check
@@ -36,6 +37,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
+
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
@@ -66,6 +68,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ### Task N: [Component Name]
 
 **Files:**
+
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
@@ -80,8 +83,7 @@ def test_specific_behavior():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/path/test.py::test_name -v`
-Expected: FAIL with "function not defined"
+Run: `pytest tests/path/test.py::test_name -v` Expected: FAIL with "function not defined"
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -92,8 +94,7 @@ def function(input):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pytest tests/path/test.py::test_name -v`
-Expected: PASS
+Run: `pytest tests/path/test.py::test_name -v` Expected: PASS
 
 - [ ] **Step 5: Commit**
 
@@ -104,25 +105,26 @@ git commit -m "feat: add specific feature"
 ````
 
 ## Remember
+
 - Exact file paths always
 - Complete code in plan (not "add validation")
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
 
-## Plan Review Loop
+## Plan Review
 
-After writing the complete plan:
+After saving the plan, run a multi-model critical review before offering execution choices.
 
-1. Dispatch a single plan-document-reviewer subagent (see plan-document-reviewer-prompt.md) with precisely crafted review context — never your session history. This keeps the reviewer focused on the plan, not your thought process.
-   - Provide: path to the plan document, path to spec document
-2. If ❌ Issues Found: fix the issues, re-dispatch reviewer for the whole plan
-3. If ✅ Approved: proceed to execution handoff
+**Run:** `/plan-review` with the full plan text as the argument.
 
-**Review loop guidance:**
-- Same agent that wrote the plan fixes it (preserves context)
-- If loop exceeds 3 iterations, surface to human for guidance
-- Reviewers are advisory — explain disagreements if you believe feedback is incorrect
+The `/plan-review` command has its own logic, just run it as instructed and wait for the response.
+
+**After the review completes:**
+
+- If the revised plan has meaningful changes, update the plan file with the revised version and commit
+- If the original plan is already lean, note that and proceed
+- Either way, continue to Execution Handoff
 
 ## Execution Handoff
 
@@ -137,9 +139,11 @@ After saving the plan, offer execution choice:
 **Which approach?"**
 
 **If Subagent-Driven chosen:**
+
 - **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
 - Fresh subagent per task + two-stage review
 
 **If Inline Execution chosen:**
+
 - **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
 - Batch execution with checkpoints for review
