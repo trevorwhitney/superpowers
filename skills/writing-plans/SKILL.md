@@ -42,7 +42,9 @@ This structure informs the task decomposition. Each task should produce self-con
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
-- "Commit" - step
+- "Stage the changes" - step
+- "Pause for human review of staged changes (no commit yet)" - step
+- "Commit after explicit human confirmation" - step
 
 ## Plan Document Header
 
@@ -96,10 +98,19 @@ def function(input):
 
 Run: `pytest tests/path/test.py::test_name -v` Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Stage changes (do not commit yet)**
 
 ```bash
 git add tests/path/test.py src/path/file.py
+```
+
+- [ ] **Step 6: Pause for human review (required stop)**
+
+Review staged changes and STOP. Do not commit. Wait for explicit human confirmation to continue.
+
+- [ ] **Step 7: Commit after confirmation**
+
+```bash
 git commit -m "feat: add specific feature"
 ```
 ````
@@ -110,7 +121,7 @@ git commit -m "feat: add specific feature"
 - Complete code in plan (not "add validation")
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
-- DRY, YAGNI, TDD, frequent commits
+- DRY, YAGNI, TDD, frequent commits after required human review pauses
 
 ## Plan Review
 
@@ -132,18 +143,18 @@ After saving the plan, offer execution choice:
 
 **"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, with required staged-change review pauses before commits, fast iteration
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
+**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints and required staged-change review pauses before commits
 
 **Which approach?"**
 
 **If Subagent-Driven chosen:**
 
 - **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
+- Fresh subagent per task + two-stage review + required staged-change human pause before commit
 
 **If Inline Execution chosen:**
 
 - **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
-- Batch execution with checkpoints for review
+- Batch execution with checkpoints for review and required staged-change human pause before commit
