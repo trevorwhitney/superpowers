@@ -41,7 +41,19 @@ Fall back to checking for `upstream/main`, then `upstream/master`. Ask the user 
 HASH=$(git rev-parse --short HEAD)
 TIMESTAMP=$(date +%Y%m%dT%H%M%S)
 git branch backup/pre-update-$HASH-$TIMESTAMP
-git tag pre-update-$HASH-$TIMESTAMP
+git -c tag.gpgsign=false tag pre-update-$HASH-$TIMESTAMP
+```
+
+Note: `-c tag.gpgsign=false` forces a lightweight tag. Without it, a global
+`tag.gpgsign=true` config makes `git tag <name>` create a signed annotated tag,
+which opens an editor for the message and invokes GPG — both can fail in
+non-interactive shells.
+
+If the tag step fails for editor/signing reasons, the backup branch is still
+sufficient for rollback. You can retry the tag with:
+
+```bash
+git -c tag.gpgsign=false tag pre-update-$HASH-$TIMESTAMP
 ```
 
 Save the tag name — you'll need it for the summary and rollback.
@@ -106,8 +118,9 @@ Report:
 - Conflicted files resolved (if any)
 - Remaining local diff: `git diff --name-only upstream/$UPSTREAM_BRANCH..HEAD`
 
-Rollback:
+Rollback (either works):
 ```bash
 git reset --hard <backup-tag>
-# Backup branch also available: backup/pre-update-<HASH>-<TIMESTAMP>
+# or, if the tag step was skipped:
+git reset --hard backup/pre-update-<HASH>-<TIMESTAMP>
 ```
