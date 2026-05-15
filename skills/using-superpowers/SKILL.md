@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 You have a library of skills loaded via the `skill` tool.
 
-**SUBAGENT-STOP**: If you were dispatched as a subagent for a specific task, skip this section.
+<SUBAGENT-STOP>If you were dispatched as a subagent for a specific task, skip this skill.</SUBAGENT-STOP>
 
 ## The Rule
 
@@ -17,7 +17,7 @@ Invoke relevant skills BEFORE any response or action — including clarifying qu
 When a skill fires:
 
 1. Announce: *"Using [skill] to [purpose]"*
-2. If the skill has a checklist, create a beads issue per item before proceeding (`bd create ...`).
+2. If the skill has a checklist, create a TodoWrite entry per item before proceeding.
 3. Follow the skill exactly. Rigid skills (TDD, debugging) must not be adapted away; flexible skills (patterns) adapt to context — the skill body says which.
 
 ## Priority Order
