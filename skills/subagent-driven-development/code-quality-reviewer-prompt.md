@@ -21,5 +21,6 @@ Task tool (general-purpose):
 - Are units decomposed so they can be understood and tested independently?
 - Is the implementation following the file structure from the plan?
 - Did this implementation create new files that are already large, or significantly grow existing files? (Don't flag pre-existing file sizes — focus on what this change contributed.)
+- Comment hygiene: no references to plans, specs, tasks, steps, or phases (including anything under `docs/superpowers/`); doc comments describe the caller-facing contract, not the algorithm; algorithm detail lives next to the code it describes. (See the `Comment hygiene` section of the `code-reviewer` agent for the full rule and Red Flags.)
 
 **Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment
