@@ -7,6 +7,42 @@ description: Use when the user wants to sync their superpowers fork with upstrea
 
 Safely merge upstream `obra/superpowers` changes into this fork, with backup, conflict preview, and rollback instructions.
 
+## Intentional Local Deviations
+
+This fork intentionally diverges from upstream in ways that must be preserved
+across updates. When merging upstream, re-apply these deviations — do NOT
+reintroduce upstream content that this fork has deliberately removed.
+
+### Removed skill: `using-git-worktrees`
+
+This fork does not use the git-worktrees workflow. The `using-git-worktrees`
+skill and all references to it have been intentionally removed. When upstream
+changes touch this skill, expect to re-remove it after merging.
+
+Specifically, keep these removals:
+- No `using-git-worktrees` skill directory or `SKILL.md`.
+- `skills/subagent-driven-development/SKILL.md` — no `using-git-worktrees`
+  line under "Required workflow skills".
+- `skills/executing-plans/SKILL.md` — no `using-git-worktrees` line under
+  "Required workflow skills".
+- `skills/writing-plans/SKILL.md` — no "isolated worktree" Context line
+  referencing `using-git-worktrees`.
+- `skills/using-superpowers/references/codex-tools.md` — the Environment
+  Detection section references only `finishing-a-development-branch`, not
+  `using-git-worktrees`.
+- `README.md` — no `using-git-worktrees` entry in the Basic Workflow or
+  Skills Library lists.
+
+After merging upstream (Step 4), if upstream reintroduced the
+`using-git-worktrees` skill or any reference to it, search and remove them
+again before validation:
+```bash
+grep -rIl "using-git-worktrees" --include="*.md" .
+```
+Review each hit and strip the reintroduced references. Leave historical
+`docs/` specs/plans and `RELEASE-NOTES.md` entries untouched (they are a
+record of past work, not active wiring).
+
 ## Step 0: Preflight
 
 ```bash
@@ -99,6 +135,10 @@ If conflicts occur:
 - Instruct: "Run `git mergetool` in your terminal to resolve, then confirm here."
 - Do NOT edit conflict markers yourself.
 - Once user confirms: `git commit --no-edit` if merge did not auto-commit.
+
+After the merge completes, re-apply the **Intentional Local Deviations**
+(see top of this skill) — in particular, re-remove any `using-git-worktrees`
+references upstream may have reintroduced.
 
 ## Step 5: Validation
 

@@ -136,21 +136,8 @@ fi
 
 echo ""
 
-# Test 8: Verify worktree requirement
-echo "Test 8: Worktree requirement..."
-
-output=$(run_claude "What workflow skills are required before using subagent-driven-development? List any prerequisites or required skills." 30)
-
-if assert_contains "$output" "using-git-worktrees\|worktree" "Mentions worktree requirement"; then
-    : # pass
-else
-    exit 1
-fi
-
-echo ""
-
-# Test 9: Verify main branch warning
-echo "Test 9: Main branch red flag..."
+# Test 8: Verify main branch warning
+echo "Test 8: Main branch red flag..."
 
 output=$(run_claude "In subagent-driven-development, is it okay to start implementation directly on the main branch?" 30)
 
