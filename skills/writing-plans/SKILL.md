@@ -135,13 +135,15 @@ type indexedSeq[R any] struct {
 }
 ```
 
-**Good** — rationale in the prose above; the comment states what it is:
+**Good** — the design discussion moves to prose; the comment keeps the invariant a maintainer needs:
 
-> We attach the pile index to the sequence itself (rather than deriving it at
-> yield time) so it is available when the loser tree snapshots each sequence.
+> We sever the tie between the loser tree and each sequence by storing the index
+> on the sequence rather than deriving it at yield time.
 
 ```go
-// indexedSeq wraps a rowReader with its index in the pile.
+// indexedSeq wraps a rowReader with its pile index. The index must be a stored
+// field (not derived lazily): the loser tree reads it eagerly when it snapshots
+// each sequence.
 type indexedSeq[R any] struct {
     rowReader[R] // promotes Next/Value/Err/Close
     idx int
