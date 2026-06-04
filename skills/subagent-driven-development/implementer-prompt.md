@@ -31,3 +31,7 @@ The `implementer` agent already knows how to:
 
 You only need to provide the task description and context. Don't repeat
 instructions the agent already has.
+
+Code blocks in the task are intentionally concise. Reproduce their comments as
+you adapt the code — do not editorialize, expand, or add narration. Follow the
+project's comment rules for anything you write yourself.

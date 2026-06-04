@@ -43,6 +43,19 @@ Review each hit and strip the reintroduced references. Leave historical
 `docs/` specs/plans and `RELEASE-NOTES.md` entries untouched (they are a
 record of past work, not active wiring).
 
+### Added: comment-quality guidance
+
+This fork adds comment-quality guidance that must be preserved across updates:
+- `skills/writing-plans/SKILL.md` — a `## Comments in Plan Code` section (rationale in prose, contract-only comments in code blocks, with a worked example).
+- `skills/subagent-driven-development/SKILL.md` — a "Never add or expand comments in a task's code blocks" bullet under Red Flags.
+- `skills/subagent-driven-development/implementer-prompt.md` — a line noting code-block comments are intentionally concise; reproduce, do not editorialize.
+
+After merging upstream (Step 4), verify these survive:
+```bash
+grep -rIl "Comments in Plan Code\|intentionally concise" skills/ --include="*.md"
+```
+If a merge dropped them, re-apply from this record.
+
 ## Step 0: Preflight
 
 ```bash

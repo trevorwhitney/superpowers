@@ -114,6 +114,40 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+## Comments in Plan Code
+
+Code blocks in tasks are pasted into the implementer and become the shipped code, comments included. So the comments you write in plan code blocks must already meet the project's comment standard: **describe what the code does and its contract — never why it was built this way.**
+
+Put rationale — the design discussion, alternatives, the constraint being satisfied — in the **prose before the code block**, where it belongs. Do not encode it in the block's comments.
+
+Test each comment: if a pure refactor (same behavior, different implementation) would make it false or pointless, it is justifying the implementation. Move it to the prose and reduce the comment to the contract.
+
+**Bad** — the comment fossilizes the design discussion:
+
+```go
+// indexedSeq attaches a stable pile index so the loser tree can break ties
+// deterministically. The index must be readable when the tree snapshots each
+// sequence (loser.Tree calls at() eagerly inside moveNext), so it must travel
+// with the sequence rather than be derived at yield time.
+type indexedSeq[R any] struct {
+    rowReader[R]
+    idx int
+}
+```
+
+**Good** — rationale in the prose above; the comment states what it is:
+
+> We attach the pile index to the sequence itself (rather than deriving it at
+> yield time) so it is available when the loser tree snapshots each sequence.
+
+```go
+// indexedSeq wraps a rowReader with its index in the pile.
+type indexedSeq[R any] struct {
+    rowReader[R] // promotes Next/Value/Err/Close
+    idx int
+}
+```
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
