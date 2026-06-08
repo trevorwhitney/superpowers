@@ -185,22 +185,9 @@ The `/plan-review` command has its own logic, just run it as instructed and wait
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving the plan, proceed with subagent-driven execution. Do not offer a choice between execution modes.
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
-
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, with required staged-change review pauses before commits, fast iteration
-
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints and required staged-change review pauses before commits
-
-**Which approach?"**
-
-**If Subagent-Driven chosen:**
+**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Proceeding with subagent-driven execution — a fresh subagent per task, two-stage review, and a required staged-change human pause before each commit."**
 
 - **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
 - Fresh subagent per task + two-stage review + required staged-change human pause before commit
-
-**If Inline Execution chosen:**
-
-- **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
-- Batch execution with checkpoints for review and required staged-change human pause before commit
