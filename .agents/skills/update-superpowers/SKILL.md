@@ -56,6 +56,22 @@ grep -rIl "Comments in Plan Code\|intentionally concise" skills/ --include="*.md
 ```
 If a merge dropped them, re-apply from this record.
 
+### Changed: writing-plans always uses subagent-driven execution
+
+Upstream's `skills/writing-plans/SKILL.md` "Execution Handoff" offers a choice
+between subagent-driven and inline (`executing-plans`) execution. This fork
+removes that choice and always proceeds with subagent-driven execution. Keep:
+- `skills/writing-plans/SKILL.md` — the `## Execution Handoff` section proceeds
+  directly to subagent-driven-development. It must NOT prompt for an execution
+  mode or mention inline / `executing-plans` as a selectable option.
+
+After merging upstream (Step 4), verify the choice prompt did not return:
+```bash
+grep -n "Inline Execution\|Which approach" skills/writing-plans/SKILL.md
+```
+This should produce no matches. If a merge reintroduced the choice, re-apply
+this record (proceed straight to subagent-driven-development).
+
 ## Step 0: Preflight
 
 ```bash
