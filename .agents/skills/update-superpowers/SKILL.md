@@ -56,21 +56,69 @@ grep -rIl "Comments in Plan Code\|intentionally concise" skills/ --include="*.md
 ```
 If a merge dropped them, re-apply from this record.
 
-### Changed: writing-plans always uses subagent-driven execution
+### Changed: writing-plans offers production vs. prototype workflow choice
 
-Upstream's `skills/writing-plans/SKILL.md` "Execution Handoff" offers a choice
-between subagent-driven and inline (`executing-plans`) execution. This fork
-removes that choice and always proceeds with subagent-driven execution. Keep:
-- `skills/writing-plans/SKILL.md` — the `## Execution Handoff` section proceeds
-  directly to subagent-driven-development. It must NOT prompt for an execution
-  mode or mention inline / `executing-plans` as a selectable option.
+Upstream's `skills/writing-plans/SKILL.md` may have different execution handoff
+behavior. This fork offers an explicit choice between two subagent workflows:
+- **Production** (with human review gates) — `superpowers:subagent-driven-development`
+- **Prototype** (no human gates) — `superpowers:prototype-driven-development`
 
-After merging upstream (Step 4), verify the choice prompt did not return:
+Keep:
+- `skills/writing-plans/SKILL.md` — the `## Execution Handoff` section asks the
+  user to choose between production and prototype workflows, listing their
+  differences clearly.
+- The plan header template lists all three options (including `executing-plans`
+  as a fallback).
+
+After merging upstream (Step 4), verify this choice structure survives:
 ```bash
-grep -n "Inline Execution\|Which approach" skills/writing-plans/SKILL.md
+grep -n "prototype-driven-development" skills/writing-plans/SKILL.md
 ```
-This should produce no matches. If a merge reintroduced the choice, re-apply
-this record (proceed straight to subagent-driven-development).
+This should show the execution handoff section and plan header. If upstream
+removed the prototype option, re-apply this record.
+
+### Added: Human review gates and prototype workflow
+
+This fork adds mandatory human review gates to production workflows and a
+separate prototype workflow that bypasses them. Key changes:
+
+**`skills/subagent-driven-development/SKILL.md`:**
+- Core principle includes "human review gate before commit"
+- Human review workflow section describes stopping for human approval before each commit
+- Workflow diagram includes yellow "Present changes to human for review" and "Human approves?" nodes
+- Example workflow shows human approval gates and coordinator commits
+- Mentions `prototype-driven-development` as alternative for throwaway work
+- Red Flags include "Commit before human review"
+
+**`skills/prototype-driven-development/SKILL.md`** (new skill):
+- Entire skill for throwaway/prototype work without human gates
+- Same automated reviews (spec + quality) but no human approval step
+- No final `/code-review`
+- Strong Red Flags: "Never use for production code, peer-reviewed code, security changes"
+- "If someone will read this code in a code review, use subagent-driven-development"
+
+**`skills/subagent-driven-development/implementer-prompt.md`:**
+- "Do NOT commit work — the coordinator handles commits after human review"
+
+**`skills/subagent-driven-development/code-quality-reviewer-prompt.md`:**
+- Uses `DIFF_SPEC: Uncommitted working tree changes` instead of `BASE_SHA/HEAD_SHA`
+
+**`skills/executing-plans/SKILL.md`:**
+- Lists both production and prototype workflow options
+
+**`skills/brainstorming/SKILL.md`:**
+- Mentions prototype option in Implementation section
+
+After merging upstream (Step 4), verify these survive:
+```bash
+grep -rn "human review gate\|prototype-driven-development" skills/subagent-driven-development/ skills/writing-plans/ skills/brainstorming/ skills/executing-plans/ --include="*.md"
+grep -n "Do NOT commit" skills/subagent-driven-development/implementer-prompt.md
+test -f skills/prototype-driven-development/SKILL.md && echo "prototype skill exists" || echo "WARNING: prototype skill missing"
+```
+
+If upstream changes conflict with these human-review mechanisms, carefully
+preserve the human review gates in production workflow while ensuring prototype
+workflow remains available as an explicit opt-in.
 
 ## Step 0: Preflight
 

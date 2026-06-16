@@ -10,9 +10,11 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task + two-stage review (spec then quality) + human review gate before commit = high quality, verified iteration
 
-**Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
+**Human review workflow:** After implementer completes work and both reviews (spec + quality) pass, STOP and present the changes for human review. Only after human approval should you commit. This happens once per task before moving to the next task.
+
+**For throwaway/prototype work:** If the code won't be peer-reviewed or go to production (personal tools, prototypes, throwaway exploratory code), see **superpowers:prototype-driven-development** — same workflow without the human gates.
 
 ## When to Use
 
@@ -38,7 +40,7 @@ digraph when_to_use {
 - Same session (no context switch)
 - Fresh subagent per task (no context pollution)
 - Two-stage review after each task: spec compliance first, then code quality
-- Faster iteration (no human-in-loop between tasks)
+- Human review gate before each commit (coordinator presents changes, human approves, coordinator commits)
 
 ## The Process
 
@@ -51,13 +53,17 @@ digraph process {
         "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
-        "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
+        "Implementer subagent implements, tests, self-reviews (NO COMMIT)" [shape=box];
         "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [shape=box];
         "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
         "Implementer subagent fixes spec gaps" [shape=box];
         "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
         "Code quality reviewer subagent approves?" [shape=diamond];
         "Implementer subagent fixes quality issues" [shape=box];
+        "Present changes to human for review" [shape=box style=filled fillcolor=yellow];
+        "Human approves?" [shape=diamond style=filled fillcolor=yellow];
+        "Address human feedback" [shape=box];
+        "Coordinator commits changes" [shape=box];
         "Mark task complete in TodoWrite" [shape=box];
     }
 
@@ -72,8 +78,8 @@ digraph process {
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
     "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="no"];
-    "Implementer subagent implements, tests, commits, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
+    "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, self-reviews (NO COMMIT)" [label="no"];
+    "Implementer subagent implements, tests, self-reviews (NO COMMIT)" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
     "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
     "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
     "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
@@ -81,7 +87,12 @@ digraph process {
     "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
     "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
     "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Mark task complete in TodoWrite" [label="yes"];
+    "Code quality reviewer subagent approves?" -> "Present changes to human for review" [label="yes"];
+    "Present changes to human for review" -> "Human approves?";
+    "Human approves?" -> "Address human feedback" [label="no"];
+    "Address human feedback" -> "Present changes to human for review" [label="re-present"];
+    "Human approves?" -> "Coordinator commits changes" [label="yes"];
+    "Coordinator commits changes" -> "Mark task complete in TodoWrite";
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Run /code-review with full diff of all changes" [label="no"];
@@ -154,13 +165,40 @@ Implementer: "Got it. Implementing now..."
   - Implemented install-hook command
   - Added tests, 5/5 passing
   - Self-review: Found I missed --force flag, added it
-  - Committed
+  - Ready for review (NOT committed)
 
-[Dispatch spec compliance reviewer]
+[Dispatch spec compliance reviewer on uncommitted diff]
 Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
 
-[Get git SHAs, dispatch code quality reviewer]
+[Dispatch code quality reviewer on uncommitted diff]
 Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
+
+You: [Present changes to human]
+  Changes ready for review:
+  - Modified: src/commands/install-hook.sh
+  - Added: tests/install-hook.test.sh
+  - All tests passing (5/5)
+  - Spec compliant ✅
+  - Quality approved ✅
+  
+  git diff --stat shows 2 files changed, 87 insertions(+)
+  
+  Review and approve to commit?
+
+Task 2: Recovery modes
+
+[Get Task 2 text and context (already extracted)]
+[Dispatch implementation subagent with full task text + context]
+
+Human: Approved. Commit it.
+
+[Coordinator commits with message composed from task]
+git commit -m "feat: add install-hook command with --force flag
+
+Implements hook installation at user level (~/.config/superpowers/hooks/)
+with optional --force flag to overwrite existing hooks.
+
+Tested: 5/5 tests passing"
 
 [Mark Task 1 complete]
 
@@ -174,9 +212,9 @@ Implementer:
   - Added verify/repair modes
   - 8/8 tests passing
   - Self-review: All good
-  - Committed
+  - Ready for review (NOT committed)
 
-[Dispatch spec compliance reviewer]
+[Dispatch spec compliance reviewer on uncommitted diff]
 Spec reviewer: ❌ Issues:
   - Missing: Progress reporting (spec says "report every 100 items")
   - Extra: Added --json flag (not requested)
@@ -187,7 +225,7 @@ Implementer: Removed --json flag, added progress reporting
 [Spec reviewer reviews again]
 Spec reviewer: ✅ Spec compliant now
 
-[Dispatch code quality reviewer]
+[Dispatch code quality reviewer on uncommitted diff]
 Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
 
 [Implementer fixes]
@@ -196,20 +234,40 @@ Implementer: Extracted PROGRESS_INTERVAL constant
 [Code reviewer reviews again]
 Code reviewer: ✅ Approved
 
+You: [Present changes to human]
+  Changes ready for review:
+  - Modified: src/recovery.sh
+  - Added: tests/recovery.test.sh
+  - All tests passing (8/8)
+  - Spec compliant ✅
+  - Quality approved ✅
+  
+  Review and approve to commit?
+
+Human: Approved. Commit it.
+
+[Coordinator commits with message composed from task]
+git commit -m "feat: add verify and repair recovery modes
+
+Implements verify mode to check hook integrity and repair mode
+to fix corrupted hooks with progress reporting every 100 items.
+
+Tested: 8/8 tests passing"
+
 [Mark Task 2 complete]
 
 ...
 
-[After all tasks]
-[Run /code-review with git diff of all changes]
+[After all 5 tasks complete, all committed after human review]
+[Run /code-review with git diff of all changes since start]
 Code review debate:
   Reviewer A: Found 2 issues (magic constant, missing error handling)
   Reviewer B: Challenged magic constant finding
   Rebuttal: Magic constant finding dropped, error handling confirmed
   Synthesis: 1 surviving finding - missing error handling in parser
 
-[Dispatch implementer to fix]
-Implementer: Added error handling, committed
+[Present to human, get approval]
+[Dispatch implementer to fix, get human review, commit]
 
 [Re-run /code-review]
 Code review debate: No surviving findings
@@ -220,14 +278,17 @@ Done!
 
 ## Final Code Review
 
-After all tasks are complete, run a multi-model critical code review of the entire implementation.
+After all tasks are complete (all individually reviewed and committed), run a multi-model critical code review of the entire implementation.
 
 **Run:** `/code-review` with the full `git diff` of all changes since the plan started (use the base commit SHA captured at the start).
 
 The `/code-review` command has its own logic, just run it as instructed and wait for the response.
 
 **After the debate completes:**
-- If there are surviving findings, dispatch an implementer subagent to fix them
+- If there are surviving findings, present them to human, get approval to proceed
+- Dispatch an implementer subagent to fix them
+- Present fixes for human review
+- Human approves, then commit
 - Re-run `/code-review` after fixes
 - Repeat until clean
 - Then proceed to finishing-a-development-branch
@@ -242,7 +303,7 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 
 **vs. Executing Plans:**
 - Same session (no handoff)
-- Continuous progress (no waiting)
+- Human review gate ensures quality before commits
 - Review checkpoints automatic
 
 **Efficiency gains:**
@@ -253,7 +314,8 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 
 **Quality gates:**
 - Self-review catches issues before handoff
-- Two-stage per-task review: spec compliance, then code quality
+- Two-stage per-task review: spec compliance, then code quality (both on uncommitted code)
+- Human review before each commit
 - Multi-model critical final code review (findings must survive cross-examination)
 - Review loops ensure fixes actually work
 - Spec compliance prevents over/under-building
@@ -263,15 +325,17 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 - More subagent invocations (implementer + 2 reviewers per task)
 - Controller does more prep work (extracting all tasks upfront)
 - Review loops add iterations
+- Human review adds latency per task
 - But catches issues early (cheaper than debugging later)
 
 ## Red Flags
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip reviews (spec compliance OR code quality)
+- Skip reviews (spec compliance OR code quality OR human review)
 - Skip the final `/code-review` (per-task reviews passing doesn't replace holistic review)
 - Proceed with unfixed issues
+- Commit before human review
 - Dispatch multiple implementation subagents in parallel (conflicts)
 - Make subagent read plan file (provide full text instead)
 - Add or expand comments in a task's code blocks. The plan's code-block comments are intentionally concise; pass them through unchanged and keep rationale in the surrounding prose, not in the code.
@@ -294,6 +358,11 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 - Repeat until approved
 - Don't skip the re-review
 
+**If human feedback received:**
+- Address concerns fully
+- Re-present for approval
+- Don't commit until approved
+
 **If subagent fails task:**
 - Dispatch fix subagent with specific instructions
 - Don't try to fix manually (context pollution)
@@ -308,5 +377,16 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 **Subagents should use:**
 - **superpowers:test-driven-development** - Subagents follow TDD for each task
 
-**Alternative workflow:**
+**Alternative workflows:**
 - **superpowers:executing-plans** - Use for parallel session instead of same-session execution
+- **superpowers:prototype-driven-development** - Use for throwaway/prototype work without human review gates
+
+Base directory for this skill: file:///Users/twhitney/workspace/superpowers/calm-frost/skills/subagent-driven-development
+Relative paths in this skill (e.g., scripts/, reference/) are relative to this base directory.
+Note: file list is sampled.
+
+<skill_files>
+<file>/Users/twhitney/workspace/superpowers/calm-frost/skills/subagent-driven-development/code-quality-reviewer-prompt.md</file>
+<file>/Users/twhitney/workspace/superpowers/calm-frost/skills/subagent-driven-development/implementer-prompt.md</file>
+<file>/Users/twhitney/workspace/superpowers/calm-frost/skills/subagent-driven-development/spec-reviewer-prompt.md</file>
+</skill_files>

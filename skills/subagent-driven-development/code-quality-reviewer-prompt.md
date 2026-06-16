@@ -12,8 +12,7 @@ Task tool (general-purpose):
 
   DESCRIPTION: [task summary, from implementer's report]
   PLAN_OR_REQUIREMENTS: Task N from [plan-file]
-  BASE_SHA: [commit before task]
-  HEAD_SHA: [current commit]
+  DIFF_SPEC: Uncommitted working tree changes (use `git diff` and `git status`)
 ```
 
 **In addition to standard code quality concerns, the reviewer should check:**

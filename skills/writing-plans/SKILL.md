@@ -52,7 +52,11 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Choose appropriate workflow:
+> - superpowers:subagent-driven-development (production code with human review)
+> - superpowers:prototype-driven-development (throwaway/prototype code, no human gates)
+> - superpowers:executing-plans (fallback if subagents unavailable)
+> Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -185,9 +189,24 @@ The `/plan-review` command has its own logic, just run it as instructed and wait
 
 ## Execution Handoff
 
-After saving the plan, proceed with subagent-driven execution. Do not offer a choice between execution modes.
+After saving the plan, ask your human partner to choose the execution workflow.
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Proceeding with subagent-driven execution — a fresh subagent per task, two-stage review, and a required staged-change human pause before each commit."**
+**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Choose execution workflow:**
 
-- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review + required staged-change human pause before commit
+1. **Production** (recommended for code that will be peer-reviewed or go to production)
+   - Fresh subagent per task
+   - Two-stage automated review (spec + quality)
+   - **Human review gate before each commit**
+   - Multi-model final code review
+   - Use: superpowers:subagent-driven-development
+
+2. **Prototype** (for throwaway code, prototypes, personal tools)
+   - Fresh subagent per task
+   - Two-stage automated review (spec + quality)
+   - **No human review gates** — commits automatically after reviews pass
+   - No final code review
+   - Use: superpowers:prototype-driven-development
+
+**Which workflow should I use?"**
+
+Wait for their choice, then invoke the appropriate skill.

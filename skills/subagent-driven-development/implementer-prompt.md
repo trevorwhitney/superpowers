@@ -25,7 +25,7 @@ The `implementer` agent already knows how to:
 
 - Ask clarifying questions before starting
 - Follow TDD when the task specifies it
-- Commit work when complete
+- **Do NOT commit work** - the coordinator handles commits after human review
 - Self-review for completeness, quality, and discipline
 - Report back in a standard format
 

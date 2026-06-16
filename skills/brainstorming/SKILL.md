@@ -139,6 +139,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 **Implementation:**
 
 - Invoke the writing-plans skill to create a detailed implementation plan
+- **Note:** If this is throwaway/prototype work that won't be peer-reviewed or go to production, mention that to your human partner. They can choose between production workflow (with human review gates) or prototype workflow (automated reviews, no human gates) during the planning phase.
 - Do NOT invoke any other skill. writing-plans is the next step.
 
 ## Key Principles
