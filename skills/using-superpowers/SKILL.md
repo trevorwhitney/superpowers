@@ -27,3 +27,11 @@ User instructions (CLAUDE.md, AGENTS.md, direct requests) > skills > default sys
 ## When Multiple Skills Apply
 
 Process skills first (brainstorming, systematic-debugging) determine HOW to approach the task. Implementation skills second guide execution. *"Let's build X"* → brainstorming first. *"Fix this bug"* → debugging first.
+
+## Platform Adaptation
+
+If your harness appears here, read its reference file for special instructions:
+
+- Codex: `references/codex-tools.md`
+- Pi: `references/pi-tools.md`
+- Antigravity: `references/antigravity-tools.md`
