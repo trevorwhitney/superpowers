@@ -49,18 +49,17 @@ digraph process {
     rankdir=TB;
 
     subgraph cluster_per_task {
-        label="Per Task";
+        label="Per Task (single-pass)";
         "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer subagent implements, tests, self-reviews (NO COMMIT)" [shape=box];
         "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [shape=box];
-        "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
-        "Implementer subagent fixes spec gaps" [shape=box];
-        "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
-        "Code quality reviewer subagent approves?" [shape=diamond];
-        "Implementer subagent fixes quality issues" [shape=box];
-        "Present changes to human for review" [shape=box style=filled fillcolor=yellow];
+        "Coordinator triages spec findings, dispatches implementer to fix spec gaps (once)" [shape=box];
+        "Dispatch code-reviewer + writing-quality-reviewer in parallel (one message)" [shape=box];
+        "Coordinator merges + triages findings, resolves conflicts" [shape=box];
+        "Coordinator dispatches implementer to apply accepted fixes (once)" [shape=box];
+        "Present applied-fix diff + summary to human for review" [shape=box style=filled fillcolor=yellow];
         "Human approves?" [shape=diamond style=filled fillcolor=yellow];
         "Address human feedback" [shape=box];
         "Coordinator commits changes" [shape=box];
@@ -80,17 +79,14 @@ digraph process {
     "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
     "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, self-reviews (NO COMMIT)" [label="no"];
     "Implementer subagent implements, tests, self-reviews (NO COMMIT)" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
-    "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
-    "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
-    "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
-    "Spec reviewer subagent confirms code matches spec?" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="yes"];
-    "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
-    "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
-    "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Present changes to human for review" [label="yes"];
-    "Present changes to human for review" -> "Human approves?";
+    "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Coordinator triages spec findings, dispatches implementer to fix spec gaps (once)";
+    "Coordinator triages spec findings, dispatches implementer to fix spec gaps (once)" -> "Dispatch code-reviewer + writing-quality-reviewer in parallel (one message)";
+    "Dispatch code-reviewer + writing-quality-reviewer in parallel (one message)" -> "Coordinator merges + triages findings, resolves conflicts";
+    "Coordinator merges + triages findings, resolves conflicts" -> "Coordinator dispatches implementer to apply accepted fixes (once)";
+    "Coordinator dispatches implementer to apply accepted fixes (once)" -> "Present applied-fix diff + summary to human for review";
+    "Present applied-fix diff + summary to human for review" -> "Human approves?";
     "Human approves?" -> "Address human feedback" [label="no"];
-    "Address human feedback" -> "Present changes to human for review" [label="re-present"];
+    "Address human feedback" -> "Present applied-fix diff + summary to human for review" [label="re-present"];
     "Human approves?" -> "Coordinator commits changes" [label="yes"];
     "Coordinator commits changes" -> "Mark task complete in TodoWrite";
     "Mark task complete in TodoWrite" -> "More tasks remain?";
@@ -102,6 +98,51 @@ digraph process {
     "Surviving findings?" -> "Use superpowers:finishing-a-development-branch" [label="no"];
 }
 ```
+
+## The Per-Task Review Cycle Is Single-Pass
+
+Each per-task reviewer (spec-review, code-review, writing-quality) runs **once**. The coordinator dispatches the implementer **once** to fix that cycle's findings, then the human gate verifies. There are no per-task re-review loops.
+
+**Scope guardrail:** single-pass applies ONLY to the per-task cluster above. The final `/code-review` (after all tasks) keeps its own multi-pass re-review loop, and `/council` is untouched. Never remove the `Run /code-review → Surviving findings? → fix → re-review` edges or the "Skip the final `/code-review`" Red Flag.
+
+### The coordinator
+
+"The coordinator" is the main SDD orchestrator session — the top-level agent that reads the plan, dispatches subagents, and runs `git commit`. It holds `task` (to dispatch) and `bash`/`edit` **only to commit and orchestrate — never to author code or fix findings**. It turns findings into fixes ONLY by dispatching the `implementer` subagent (consistent with the existing invariant that the coordinator delegates all code changes). Triage is a decision, not an edit.
+
+### Parallel dispatch
+
+Dispatch `code-reviewer` and `writing-quality-reviewer` as two `Task` calls in one assistant message. If the harness runs them concurrently, that is a latency win; if it serialises them, the outcome is identical (two independent finding lists, then merge). Parallelism is a latency optimisation, not a correctness requirement.
+
+### Merge + triage rule (quality stage)
+
+- Merge the two reviewers' outputs into one list, severity-ordered (Critical first), preserving each finding's original severity. The `code-reviewer` uses **Minor** as its lowest tier and the writing-quality reviewer uses **Suggestion**; treat **Minor** and **Suggestion** as the same lowest tier for triage.
+- A finding belongs to whichever reviewer flagged it. Two findings on the same `file:line` from different reviewers are both real — keep both.
+- Apply all Critical and Important findings. Apply Suggestions too, EXCEPT a Suggestion is dropped only when (a) applying it would conflict with a Critical/Important finding, or (b) it targets generated or third-party code. List every dropped Suggestion in the human-gate summary as "not applied, reason: [a|b]".
+- **Conflict resolution (narrow):** a conflict exists only when applying one finding's fix would violate the other's rule (e.g. code-reviewer wants a "why" comment; writing-quality rejects its wording). Mere colocation is NOT a conflict. On a real conflict, satisfy the higher-severity finding and adopt the lower-severity finding's own supplied replacement text to reword it. The coordinator needs no STE knowledge — each writing-quality finding carries a compliant replacement.
+- Dispatch the implementer once with the triaged, conflict-resolved list, then present to the human gate.
+
+### Spec-gap triage rule
+
+Symmetric with the quality rule, applied to the spec-reviewer's output after spec-review (once):
+- Apply all spec-reviewer Critical and Important findings. Apply Suggestions unless they conflict with the plan.
+- A genuinely ambiguous spec gap (fix depends on intent the plan does not settle) is NOT guessed — surface it at the human gate.
+- Dispatch the implementer once, then proceed to the quality stage. No spec re-review.
+
+### Implementer dispatch for applying fixes
+
+The coordinator applies both spec-gap fixes and quality fixes by dispatching the existing `implementer` subagent via `implementer-prompt.md` — no new template. The triaged finding list (each item: `file:line`, what to change, suggested replacement text) is the task description. The implementer edits; it does not re-derive findings.
+
+### Reviewer failure / unreconcilable conflict
+
+SDD's implementer BLOCKED cases do not map to a read-only reviewer. Use this instead:
+- **Errored / timed-out reviewer:** re-dispatch once. If it fails again, proceed with the other reviewer's findings and note the failure in the human-gate summary. Do not block the task.
+- **Malformed output** (a finding missing `file:line`, severity, or — for writing-quality — a replacement): treat that finding as unusable, list it in the human-gate summary as "could not auto-apply," and apply the well-formed findings normally.
+- **Finding without a usable replacement:** the coordinator cannot author a fix (no STE knowledge), so it surfaces the finding to the human gate rather than dropping it silently.
+- **Unreconcilable conflict:** if two Critical findings genuinely cannot both be satisfied, do NOT guess — present both to the human at the gate.
+
+### Human gate presentation
+
+Because single-pass makes the human gate the sole verification of applied fixes, present the **actual diff of what the coordinator applied** (not just a "spec ✅ / quality ✅" stat line), plus the fix summary (which findings applied, which dropped and why, any items surfaced for a decision).
 
 ## Model Selection
 
@@ -141,6 +182,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 - `./implementer-prompt.md` - Dispatch implementer subagent
 - `./spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
 - `./code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
+- `./writing-quality-reviewer-prompt.md` - Dispatch writing-quality reviewer subagent (parallel with code quality)
 
 ## Example Workflow
 
@@ -215,34 +257,22 @@ Implementer:
   - Ready for review (NOT committed)
 
 [Dispatch spec compliance reviewer on uncommitted diff]
-Spec reviewer: ❌ Issues:
-  - Missing: Progress reporting (spec says "report every 100 items")
-  - Extra: Added --json flag (not requested)
+Spec reviewer: ❌ Missing progress reporting; extra --json flag not requested
 
-[Implementer fixes issues]
+[Coordinator triages: apply both. Dispatches implementer once to fix spec gaps]
 Implementer: Removed --json flag, added progress reporting
 
-[Spec reviewer reviews again]
-Spec reviewer: ✅ Spec compliant now
+[Dispatch code-reviewer ∥ writing-quality-reviewer in one message]
+Code reviewer: Important — magic number (100)
+Writing-quality reviewer: Suggestion — comment uses "should"; replacement: "Adjust the interval when the run is slow."
 
-[Dispatch code quality reviewer on uncommitted diff]
-Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
+[Coordinator merges + triages, dispatches implementer once to apply accepted fixes]
+Implementer: Extracted PROGRESS_INTERVAL constant; reworded comment
 
-[Implementer fixes]
-Implementer: Extracted PROGRESS_INTERVAL constant
-
-[Code reviewer reviews again]
-Code reviewer: ✅ Approved
-
-You: [Present changes to human]
-  Changes ready for review:
-  - Modified: src/recovery.sh
-  - Added: tests/recovery.test.sh
-  - All tests passing (8/8)
-  - Spec compliant ✅
-  - Quality approved ✅
-  
-  Review and approve to commit?
+You: [Present applied-fix diff + summary to human]
+  Modified: src/recovery.sh; Added: tests/recovery.test.sh (8/8 passing)
+  Applied: PROGRESS_INTERVAL extraction; comment reworded (STE-7). Dropped: none.
+  git diff shown below. Review and approve to commit?
 
 Human: Approved. Commit it.
 
@@ -314,17 +344,17 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 
 **Quality gates:**
 - Self-review catches issues before handoff
-- Two-stage per-task review: spec compliance, then code quality (both on uncommitted code)
+- Per-task review: spec compliance gate, then parallel code-quality + writing-quality reviewers; the coordinator triages and applies fixes before the human gate (all on uncommitted code)
 - Human review before each commit
 - Multi-model critical final code review (findings must survive cross-examination)
-- Review loops ensure fixes actually work
+- Per-task cycle is single-pass; the human gate verifies applied fixes. The final `/code-review` re-reviews until clean.
 - Spec compliance prevents over/under-building
 - Code quality ensures implementation is well-built
 
 **Cost:**
 - More subagent invocations (implementer + 2 reviewers per task)
 - Controller does more prep work (extracting all tasks upfront)
-- Review loops add iterations
+- Per-task quality stage runs two reviewers (code-reviewer + writing-quality-reviewer); single-pass removes the previously unbounded per-task re-review iterations.
 - Human review adds latency per task
 - But catches issues early (cheaper than debugging later)
 
@@ -342,7 +372,7 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
 - Accept "close enough" on spec compliance (spec reviewer found issues = not done)
-- Skip review loops (reviewer found issues = implementer fixes = review again)
+- Add per-task re-review loops. The per-task review cycle is single-pass: the coordinator dispatches the implementer once to fix findings, then the human gate verifies. (This does NOT apply to the final `/code-review`, which keeps its re-review loop.)
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
 - Move to next task while either review has open issues
@@ -352,11 +382,10 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 - Provide additional context if needed
 - Don't rush them into implementation
 
-**If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
+**If a per-task reviewer finds issues:**
+- The coordinator triages, then dispatches the implementer once to apply the accepted fixes
+- The human gate verifies the applied fixes (no per-task re-review)
+- The final `/code-review` still re-reviews until clean — that loop is unchanged
 
 **If human feedback received:**
 - Address concerns fully
