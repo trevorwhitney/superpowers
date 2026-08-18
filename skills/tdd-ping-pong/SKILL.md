@@ -10,11 +10,11 @@ Execute test-only plans in a human-in-the-loop RED/GREEN cadence.
 
 **Core principle:** Agent owns tests and verification. Human owns production implementation between each verified RED and GREEN.
 
-**Required background:** superpowers:test-driven-development
+**Required:** Load superpowers:test-driven-development at workflow start to establish RED/GREEN rigor and testing practices.
 
 ## Per-Cycle Loop
 
-1. Write one failing test (plus minimal compile scaffolding only when required).
+1. Write one failing test (plus minimal compile scaffolding only when required: placeholders must fail loudly with panic/throw; zero-value returns are allowed only when language constraints require them and must still preserve a failing path).
 2. Run targeted test and verify a valid RED outcome.
 3. Pause for human implementation.
 4. Human says continue.
@@ -35,6 +35,7 @@ Concern prompt:
 
 - Quick review is inline in the coordinator session (no multi-model fan-out).
 - It checks obvious correctness, safety, and maintainability risks.
+- In fallback/full-diff review, report most-recent-cycle concerns first.
 - If the human chooses move on, record a deferred concern entry.
 
 ## Failure Handling
@@ -47,6 +48,7 @@ Concern prompt:
 
 - Task is complete when planned tests for that task are green and concerns are addressed or explicitly deferred.
 - At task end, summarize diff plus deferred concerns, pause for human approval, and create a signed commit.
+- Do not create task commits on `main` or `master` without explicit human approval.
 
 ## Plan Boundary
 

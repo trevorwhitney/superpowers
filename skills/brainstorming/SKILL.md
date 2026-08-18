@@ -143,9 +143,11 @@ Wait for the user's response. If they request changes, make them and re-run the 
 2. `agentic production`
 3. `agentic prototype`
 
-Then emit this line immediately before invoking `writing-plans` as a bare paragraph with no markdown decoration:
+Then emit this line immediately before invoking `writing-plans` as a bare paragraph with no markdown decoration. Use exactly one of these canonical values:
 
-Mode lock: <TDD ping-pong | agentic production | agentic prototype>
+- `Mode lock: TDD ping-pong`
+- `Mode lock: agentic production`
+- `Mode lock: agentic prototype`
 
 `writing-plans` treats this mode lock as authoritative and must not ask a duplicate preset question.
 

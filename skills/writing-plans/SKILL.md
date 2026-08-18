@@ -27,7 +27,7 @@ If the spec covers multiple independent subsystems, it should have been broken i
 When invoked from brainstorming, a mode lock is already set in the conversation:
 
 ```
-Mode lock: <TDD ping-pong | agentic production | agentic prototype>
+Mode lock: TDD ping-pong
 ```
 
 **Canonical values:**
@@ -36,12 +36,19 @@ Mode lock: <TDD ping-pong | agentic production | agentic prototype>
 - `agentic production`
 - `agentic prototype`
 
+**Canonical lock lines:**
+
+- `Mode lock: TDD ping-pong`
+- `Mode lock: agentic production`
+- `Mode lock: agentic prototype`
+
 **Rules:**
 
 - If mode lock is present in the session, read it and do not ask a second preset question.
 - If mode lock is missing (direct invocation), ask once for the same three presets, then lock that selection for execution routing.
-- Expected format: `Mode lock: <canonical value>` with no markdown decoration (no backticks, asterisks, or other markup).
-- If the value is not one of the canonical values after trivial normalization (trim whitespace, remove wrapping markdown), treat mode lock as missing and ask once.
+- Expected format: `Mode lock: <canonical value>` as a bare line (no markdown decoration).
+- Normalization: trim whitespace, case-fold for comparison, and strip wrapping markdown (backticks, asterisks) and surrounding angle brackets if present.
+- If the value is not one of the canonical values after normalization, treat mode lock as missing and ask once.
 - `TDD ping-pong` → emit test-only plan format with TDD-mode header (see Plan Document Header and TDD Ping-Pong Task Structure below).
 - `agentic production` → emit standard plan format with non-TDD header.
 - `agentic prototype` → emit standard plan format with non-TDD header.
@@ -67,6 +74,8 @@ reject one task while approving its neighbor. Each task ends with an
 independently testable deliverable.
 
 ## Bite-Sized Task Granularity
+
+Use this structure for non-TDD modes (`agentic production` and `agentic prototype`).
 
 **Each step is one action (2-5 minutes):**
 
@@ -188,7 +197,7 @@ git commit -m "feat: add specific feature"
 Use this structure when mode lock is `TDD ping-pong`.
 
 - Provide concrete test snippets for each cycle.
-- Provide minimal compile scaffolding only when required by language constraints.
+- Provide minimal compile scaffolding only when required by language constraints: placeholders must fail loudly (panic/throw); zero-value returns are allowed only when language constraints require them and must still preserve a failing path.
 - Do not provide production implementation code snippets.
 - Provide breadcrumbs to existing files/patterns when useful.
 
@@ -204,16 +213,15 @@ Use this structure when mode lock is `TDD ping-pong`.
 ```go
 func TestBehavior(t *testing.T) {
     got, err := Target(input)
-    require.Error(t, err)
-    require.ErrorContains(t, err, "expected failure")
-    require.Zero(t, got)
+    require.NoError(t, err)
+    require.Equal(t, expected, got)
 }
 ```
 
 - [ ] **Cycle 1: Verify RED**
 
 Run: `go test ./path -run TestBehavior -v`  
-Expected: FAIL for missing behavior.
+Expected: FAIL for missing implementation.
 
 - [ ] **Cycle 1: Pause for human GREEN**
 
@@ -297,7 +305,7 @@ The `/plan-review` command has its own logic, just run it as instructed and wait
 
 ## Execution Handoff
 
-After saving the plan, route execution based on the mode lock established earlier.
+After plan-review completes, route execution based on the mode lock established earlier. Do not re-ask the mode question; execute immediately with the established mode lock.
 
 **If mode lock is present (from brainstorming flow):**
 
