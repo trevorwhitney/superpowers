@@ -58,6 +58,17 @@ else
 fi
 echo ""
 
+# Test: use tdd-ping-pong
+echo ">>> Test 5: use-tdd-ping-pong"
+if "$SCRIPT_DIR/run-test.sh" "tdd-ping-pong" "$PROMPTS_DIR/use-tdd-ping-pong.txt"; then
+    PASSED=$((PASSED + 1))
+    RESULTS="$RESULTS\nPASS: use-tdd-ping-pong"
+else
+    FAILED=$((FAILED + 1))
+    RESULTS="$RESULTS\nFAIL: use-tdd-ping-pong"
+fi
+echo ""
+
 echo "=== Summary ==="
 echo -e "$RESULTS"
 echo ""

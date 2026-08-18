@@ -1,0 +1,2 @@
+Please use the tdd-ping-pong skill.
+I want to execute this plan with one failing test at a time, then I will write the implementation before we continue.
