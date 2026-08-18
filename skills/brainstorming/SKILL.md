@@ -30,7 +30,11 @@ You MUST create a task for each of these items and complete them in order:
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 8. **Spec group-review** — run `/spec-review` with the spec content; fix issues found.
 9. **User reviews written spec** — ask user to review the spec file before proceeding
-10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+10. **Choose implementation preset** — ask one combined choice before planning:
+    - `TDD ping-pong`
+    - `agentic production`
+    - `agentic prototype`
+11. **Transition to implementation** — emit mode lock and invoke writing-plans skill
 
 ## Process Flow
 
@@ -45,6 +49,7 @@ digraph brainstorming {
     "Spec self-review\n(fix inline)" [shape=box];
     "Spec group-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
+    "Choose implementation preset" [shape=box];
     "Invoke writing-plans skill" [shape=doublecircle];
 
     "Explore project context" -> "Ask clarifying questions";
@@ -57,7 +62,8 @@ digraph brainstorming {
     "Spec self-review\n(fix inline)" -> "Spec group-review\n(fix inline)";
     "Spec group-review\n(fix inline)" -> "User reviews spec?";
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+    "User reviews spec?" -> "Choose implementation preset" [label="approved"];
+    "Choose implementation preset" -> "Invoke writing-plans skill";
 }
 ```
 
@@ -131,10 +137,22 @@ Fix any issues inline. No need to re-review — just fix and move on.
 
 Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
 
+**Mode Lock Gate:** After spec approval, ask exactly one preset choice:
+
+1. `TDD ping-pong`
+2. `agentic production`
+3. `agentic prototype`
+
+Then emit this line immediately before invoking `writing-plans`:
+
+`Mode lock: <TDD ping-pong | agentic production | agentic prototype>`
+
+`writing-plans` treats this mode lock as authoritative and must not ask a duplicate preset question.
+
 **Implementation:**
 
 - Invoke the writing-plans skill to create a detailed implementation plan
-- **Note:** If this is throwaway/prototype work that won't be peer-reviewed or go to production, mention that to your human partner. They can choose between production workflow (with human review gates) or prototype workflow (automated reviews, no human gates) during the planning phase.
+- **Note:** The human partner chooses one preset before planning: `TDD ping-pong`, `agentic production`, or `agentic prototype`. Planning and execution routing must follow that locked preset.
 - Do NOT invoke any other skill. writing-plans is the next step.
 
 ## Key Principles
