@@ -22,6 +22,22 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
+## Mode Lock
+
+When invoked from brainstorming, a mode lock is already set in the conversation:
+
+```
+Mode lock: <TDD ping-pong | agentic production | agentic prototype>
+```
+
+**Rules:**
+
+- If mode lock is present in the session, read it and do not ask a second preset question.
+- If mode lock is missing (direct invocation), ask once for the same three presets, then lock that selection for execution routing.
+- `TDD ping-pong` → emit test-only plan format (see TDD Ping-Pong Task Structure below).
+- `agentic production` → emit standard plan format.
+- `agentic prototype` → emit standard plan format.
+
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
@@ -62,6 +78,7 @@ independently testable deliverable.
 # [Feature Name] Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Choose appropriate workflow:
+> - superpowers:tdd-ping-pong (test-driven cycles with human review gates)
 > - superpowers:subagent-driven-development (production code with human review)
 > - superpowers:prototype-driven-development (throwaway/prototype code, no human gates)
 > - superpowers:executing-plans (fallback if subagents unavailable)
@@ -140,6 +157,49 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+## TDD Ping-Pong Task Structure
+
+Use this structure when mode lock is `TDD ping-pong`.
+
+- Provide concrete test snippets for each cycle.
+- Provide minimal compile scaffolding only when required by language constraints.
+- Do not provide production implementation code snippets.
+- Provide breadcrumbs to existing files/patterns when useful.
+
+### Task N: [Functional Slice]
+
+**Files:**
+- Modify test: `exact/path/to/test`
+- Optional compile scaffolding: `exact/path/to/source`
+- Breadcrumbs: `exact/path/to/reference`
+
+- [ ] **Cycle 1: Write failing test**
+
+```go
+func TestBehavior(t *testing.T) {
+    got, err := Target(input)
+    require.Error(t, err)
+    require.ErrorContains(t, err, "expected failure")
+    require.Zero(t, got)
+}
+```
+
+- [ ] **Cycle 1: Verify RED**
+
+Run: `go test ./path -run TestBehavior -v`  
+Expected: FAIL for missing behavior.
+
+- [ ] **Cycle 1: Pause for human GREEN**
+
+Pause and wait for human implementation.
+
+- [ ] **Cycle 1: Verify GREEN and quick review**
+
+Run: `go test ./path -run TestBehavior -v`  
+Expected: PASS for intended reason.
+
+If a concern is found, ask: "Add a new test for this concern, or move on with the plan?"
+
 ## Comments in Plan Code
 
 Code blocks in tasks are pasted into the implementer and become the shipped code, comments included. So the comments you write in plan code blocks must already meet the project's comment standard: **describe what the code does and its contract — never why it was built this way.**
@@ -211,24 +271,35 @@ The `/plan-review` command has its own logic, just run it as instructed and wait
 
 ## Execution Handoff
 
-After saving the plan, ask your human partner to choose the execution workflow.
+After saving the plan, route execution based on the mode lock established earlier.
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Choose execution workflow:**
+**If mode lock is present (from brainstorming flow):**
 
-1. **Production** (recommended for code that will be peer-reviewed or go to production)
-   - Fresh subagent per task
-   - Two-stage automated review (spec + quality)
-   - **Human review gate before each commit**
-   - Multi-model final code review
-   - Use: superpowers:subagent-driven-development
+Announce and route immediately:
 
-2. **Prototype** (for throwaway code, prototypes, personal tools)
-   - Fresh subagent per task
-   - Two-stage automated review (spec + quality)
-   - **No human review gates** — commits automatically after reviews pass
-   - No final code review
-   - Use: superpowers:prototype-driven-development
+```
+Plan complete and saved to `docs/superpowers/plans/<filename>.md`.
+Mode lock is `<preset>`, so I will use `<mapped-skill>` for execution.
+```
 
-**Which workflow should I use?"**
+Routing map:
 
-Wait for their choice, then invoke the appropriate skill.
+- `TDD ping-pong` → invoke `superpowers:tdd-ping-pong`
+- `agentic production` → invoke `superpowers:subagent-driven-development`
+- `agentic prototype` → invoke `superpowers:prototype-driven-development`
+
+**If mode lock is absent (direct invocation of writing-plans):**
+
+Ask once for the mode choice:
+
+```
+Plan complete and saved to `docs/superpowers/plans/<filename>.md`.
+
+Which execution mode should I use?
+
+1. **TDD ping-pong** - Test-driven cycles with human review gates
+2. **agentic production** - Fresh subagent per task, automated review, human gates
+3. **agentic prototype** - Subagent per task, automated review, no human gates
+```
+
+Wait for their choice, lock it, then invoke the mapped skill with the same routing map above.
