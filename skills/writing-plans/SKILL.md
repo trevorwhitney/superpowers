@@ -30,13 +30,21 @@ When invoked from brainstorming, a mode lock is already set in the conversation:
 Mode lock: <TDD ping-pong | agentic production | agentic prototype>
 ```
 
+**Canonical values:**
+
+- `TDD ping-pong`
+- `agentic production`
+- `agentic prototype`
+
 **Rules:**
 
 - If mode lock is present in the session, read it and do not ask a second preset question.
 - If mode lock is missing (direct invocation), ask once for the same three presets, then lock that selection for execution routing.
-- `TDD ping-pong` → emit test-only plan format (see TDD Ping-Pong Task Structure below).
-- `agentic production` → emit standard plan format.
-- `agentic prototype` → emit standard plan format.
+- Expected format: `Mode lock: <canonical value>` with no markdown decoration (no backticks, asterisks, or other markup).
+- If the value is not one of the canonical values after trivial normalization (trim whitespace, remove wrapping markdown), treat mode lock as missing and ask once.
+- `TDD ping-pong` → emit test-only plan format with TDD-mode header (see Plan Document Header and TDD Ping-Pong Task Structure below).
+- `agentic production` → emit standard plan format with non-TDD header.
+- `agentic prototype` → emit standard plan format with non-TDD header.
 
 ## File Structure
 
@@ -72,13 +80,31 @@ independently testable deliverable.
 
 ## Plan Document Header
 
-**Every plan MUST start with this header:**
+**Every plan MUST start with this header. Choose the template that matches the mode lock:**
+
+### For `TDD ping-pong` mode:
+
+```markdown
+# [Feature Name] Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:tdd-ping-pong
+> Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** [One sentence describing what this builds]
+
+**Architecture:** [2-3 sentences about approach]
+
+**Tech Stack:** [Key technologies/libraries]
+
+---
+```
+
+### For `agentic production` or `agentic prototype` modes:
 
 ```markdown
 # [Feature Name] Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Choose appropriate workflow:
-> - superpowers:tdd-ping-pong (test-driven cycles with human review gates)
 > - superpowers:subagent-driven-development (production code with human review)
 > - superpowers:prototype-driven-development (throwaway/prototype code, no human gates)
 > - superpowers:executing-plans (fallback if subagents unavailable)
