@@ -56,99 +56,39 @@ grep -rIl "Comments in Plan Code\|intentionally concise" skills/ --include="*.md
 ```
 If a merge dropped them, re-apply from this record.
 
-### Changed: writing-plans offers production vs. prototype workflow choice
+### Topology: two agentic skills, one of them upstream's
 
-Upstream's `skills/writing-plans/SKILL.md` may have different execution handoff
-behavior. This fork offers an explicit choice between two subagent workflows:
-- **Production** (with human review gates) — `superpowers:subagent-driven-development`
-- **Prototype** (no human gates) — `superpowers:prototype-driven-development`
+`subagent-driven-development` is upstream's, and tracks `upstream/main` with exactly four
+deviations. Re-apply each after every merge:
 
-Keep:
-- `skills/writing-plans/SKILL.md` — the `## Execution Handoff` section asks the
-  user to choose between production and prototype workflows, listing their
-  differences clearly.
-- The plan header template lists all three options (including `executing-plans`
-  as a fallback).
+1. Frontmatter: `disable-model-invocation: true`, plus a `description` naming it the
+   unsupervised variant and pointing supervised work at `supervised-subagent-development`.
+2. `## Setup`: the `superpowers:using-git-worktrees` sentence is deleted.
+3. `## Final Review`: the sentence beginning `Dispatch on the most capable` is replaced with
+   a `/code-review` instruction. Everything else in that section, including "There is no
+   second fix wave", stays upstream-verbatim.
+4. The concise-comments policy: a `## Common Rationalizations` row in `SKILL.md`, and the
+   closing paragraph of `implementer-prompt.md`.
 
-After merging upstream (Step 4), verify this choice structure survives:
+`supervised-subagent-development` is the fork's, owns every prompt and script it uses, and
+has no cross-references into any other skill directory. Upstream never touches it, so it
+never conflicts — and it never inherits upstream's improvements either.
+
+Verify after each merge:
+
 ```bash
-grep -n "prototype-driven-development" skills/writing-plans/SKILL.md
-```
-This should show the execution handoff section and plan header. If upstream
-removed the prototype option, re-apply this record.
-
-### Added: Human review gates and prototype workflow
-
-This fork adds mandatory human review gates to production workflows and a
-separate prototype workflow that bypasses them. Key changes:
-
-**`skills/subagent-driven-development/SKILL.md`:**
-- Core principle includes "human review gate before commit"
-- Human review workflow section describes stopping for human approval before each commit
-- Workflow diagram includes yellow "Present changes to human for review" and "Human approves?" nodes
-- Example workflow shows human approval gates and coordinator commits
-- Mentions `prototype-driven-development` as alternative for throwaway work
-- Red Flags include "Commit before human review"
-
-**`skills/prototype-driven-development/SKILL.md`** (new skill):
-- Entire skill for throwaway/prototype work without human gates
-- Same automated reviews (spec + quality) but no human approval step
-- No final `/code-review`
-- Strong Red Flags: "Never use for production code, peer-reviewed code, security changes"
-- "If someone will read this code in a code review, use subagent-driven-development"
-
-**`skills/subagent-driven-development/implementer-prompt.md`:**
-- "Do NOT commit work — the coordinator handles commits after human review"
-
-**`skills/executing-plans/SKILL.md`:**
-- Lists both production and prototype workflow options
-
-**`skills/brainstorming/SKILL.md`:**
-- Offers `agentic prototype` as one of the three mode-lock presets
-
-After merging upstream (Step 4), verify these survive:
-```bash
-grep -rn "human review gate\|prototype-driven-development" skills/subagent-driven-development/ skills/writing-plans/ skills/brainstorming/ skills/executing-plans/ --include="*.md"
-grep -n "Do NOT commit" skills/subagent-driven-development/implementer-prompt.md
-test -f skills/prototype-driven-development/SKILL.md && echo "prototype skill exists" || echo "WARNING: prototype skill missing"
+git diff upstream/main -- skills/subagent-driven-development | grep '^[+-][^+-]'
+grep -rn '\.\./' skills/supervised-subagent-development/ || echo "no cross-references"
+./tests/claude-code/test-skill-references.sh
 ```
 
-If upstream changes conflict with these human-review mechanisms, carefully
-preserve the human review gates in production workflow while ensuring prototype
-workflow remains available as an explicit opt-in.
+**Script drift is the cost that bites.** `sdd-workspace`, `task-brief`, and `review-package` exist in both skill
+directories. Upstream bug fixes to its copies do not reach the supervised copies. At every
+merge, diff them and port anything that is a correctness fix:
 
-### Rejected: upstream's autonomous per-task fix loop
-
-Upstream v6.2/6.3 replaced the per-task cycle with a five-round, resume-based
-fix loop that adjudicates its own findings and never pauses for a human
-("Continuous execution", "Rulings, not stalls", `re-review-prompt.md`, the
-breaker, parked findings). That design is incompatible with this fork's human
-gate, which is the single verification point for applied fixes.
-
-This fork keeps instead:
-- Single-pass per-task cycle: one review, one triage, one fix dispatch, then
-  the human gate.
-- Coordinator commits after approval; implementers never commit.
-- `scripts/review-package --working-tree PLAN_FILE` for the per-task package
-  (the work is uncommitted at review time).
-- The final `/code-review` keeps its own multi-pass re-review loop.
-- No `re-review-prompt.md` — deleted, because nothing in the fork's loop
-  dispatches a scoped re-review.
-- `## Advantages` section retained (upstream deleted it in its compression
-  sweep; the fork's version carries fork-specific human-gate content).
-
-Upstream improvements that ARE adopted because they are orthogonal to the
-gate: plan-scoped workspaces (`.superpowers/sdd/<plan-basename>/`), the ledger
-naming its own plan, workspace deletion at plan end, `PLAN_FILE` threading
-through `task-brief`/`review-package`/`sdd-workspace`, and the
-"You Do Not Dispatch Subagents" contract in the implementer prompt.
-
-After merging upstream, check for reintroduced autonomous-loop language:
 ```bash
-grep -n -i 'fix round\|rounds 1-3\|rounds 4-5\|breaker\|scoped re-review\|five rounds\|parked' skills/subagent-driven-development/SKILL.md
+diff -ru skills/subagent-driven-development/scripts skills/supervised-subagent-development/scripts
 ```
-Any hit is upstream's loop leaking back in — rewrite it to the single-pass
-model or drop it.
 
 ## Step 0: Preflight
 
