@@ -100,14 +100,11 @@ separate prototype workflow that bypasses them. Key changes:
 **`skills/subagent-driven-development/implementer-prompt.md`:**
 - "Do NOT commit work — the coordinator handles commits after human review"
 
-**`skills/subagent-driven-development/code-quality-reviewer-prompt.md`:**
-- Uses `DIFF_SPEC: Uncommitted working tree changes` instead of `BASE_SHA/HEAD_SHA`
-
 **`skills/executing-plans/SKILL.md`:**
 - Lists both production and prototype workflow options
 
 **`skills/brainstorming/SKILL.md`:**
-- Mentions prototype option in Implementation section
+- Offers `agentic prototype` as one of the three mode-lock presets
 
 After merging upstream (Step 4), verify these survive:
 ```bash
@@ -119,6 +116,39 @@ test -f skills/prototype-driven-development/SKILL.md && echo "prototype skill ex
 If upstream changes conflict with these human-review mechanisms, carefully
 preserve the human review gates in production workflow while ensuring prototype
 workflow remains available as an explicit opt-in.
+
+### Rejected: upstream's autonomous per-task fix loop
+
+Upstream v6.2/6.3 replaced the per-task cycle with a five-round, resume-based
+fix loop that adjudicates its own findings and never pauses for a human
+("Continuous execution", "Rulings, not stalls", `re-review-prompt.md`, the
+breaker, parked findings). That design is incompatible with this fork's human
+gate, which is the single verification point for applied fixes.
+
+This fork keeps instead:
+- Single-pass per-task cycle: one review, one triage, one fix dispatch, then
+  the human gate.
+- Coordinator commits after approval; implementers never commit.
+- `scripts/review-package --working-tree PLAN_FILE` for the per-task package
+  (the work is uncommitted at review time).
+- The final `/code-review` keeps its own multi-pass re-review loop.
+- No `re-review-prompt.md` — deleted, because nothing in the fork's loop
+  dispatches a scoped re-review.
+- `## Advantages` section retained (upstream deleted it in its compression
+  sweep; the fork's version carries fork-specific human-gate content).
+
+Upstream improvements that ARE adopted because they are orthogonal to the
+gate: plan-scoped workspaces (`.superpowers/sdd/<plan-basename>/`), the ledger
+naming its own plan, workspace deletion at plan end, `PLAN_FILE` threading
+through `task-brief`/`review-package`/`sdd-workspace`, and the
+"You Do Not Dispatch Subagents" contract in the implementer prompt.
+
+After merging upstream, check for reintroduced autonomous-loop language:
+```bash
+grep -n -i 'fix round\|rounds 1-3\|rounds 4-5\|breaker\|scoped re-review\|five rounds\|parked' skills/subagent-driven-development/SKILL.md
+```
+Any hit is upstream's loop leaking back in — rewrite it to the single-pass
+model or drop it.
 
 ## Step 0: Preflight
 

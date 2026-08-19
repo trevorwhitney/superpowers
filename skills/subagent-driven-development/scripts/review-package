@@ -4,31 +4,36 @@
 # call.
 #
 # This fork's SDD keeps the implementer's work UNCOMMITTED until a human
-# approves it, so the default mode packages the working-tree diff against
-# HEAD. A committed BASE..HEAD range is still supported for the final
-# whole-branch review. Using the recorded per-task BASE (not HEAD~1) keeps
-# multi-commit ranges intact.
+# approves it, so --working-tree packages the diff against HEAD. A committed
+# BASE..HEAD range is still supported for the final whole-branch review.
+# Using the recorded per-task BASE (not HEAD~1) keeps multi-commit ranges
+# intact.
 #
 # Usage:
-#   review-package --working-tree [OUTFILE]   # uncommitted per-task review
-#   review-package BASE HEAD [OUTFILE]         # committed range (final review)
-# Default OUTFILE:
-#   working-tree: <repo-root>/.superpowers/sdd/review-worktree-<head7>.diff
-#   range:        <repo-root>/.superpowers/sdd/review-<base7>..<head7>.diff
+#   review-package --working-tree PLAN_FILE [OUTFILE]  # uncommitted per-task review
+#   review-package PLAN_FILE BASE HEAD [OUTFILE]       # committed range (final review)
+# Default OUTFILE, under <repo-root>/.superpowers/sdd/<plan-basename>/:
+#   working-tree: review-worktree-<head7>.diff
+#   range:        review-<base7>..<head7>.diff
+# (named per range, so a re-review after fixes gets a distinct fresh file).
 set -euo pipefail
 
-workspace() { "$(cd "$(dirname "$0")" && pwd)/sdd-workspace"; }
+workspace() { "$(cd "$(dirname "$0")" && pwd)/sdd-workspace" "$1"; }
 
 if [ "${1:-}" = "--working-tree" ]; then
-  if [ $# -gt 2 ]; then
-    echo "usage: review-package --working-tree [OUTFILE]" >&2
+  if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "usage: review-package --working-tree PLAN_FILE [OUTFILE]" >&2
     exit 2
   fi
+
+  plan=$2
+  [ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+
   head7=$(git rev-parse --short HEAD)
-  if [ $# -eq 2 ]; then
-    out=$2
+  if [ $# -eq 3 ]; then
+    out=$3
   else
-    out="$(workspace)/review-worktree-${head7}.diff"
+    out="$(workspace "$plan")/review-worktree-${head7}.diff"
   fi
 
   {
@@ -49,21 +54,23 @@ if [ "${1:-}" = "--working-tree" ]; then
   exit 0
 fi
 
-if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-  echo "usage: review-package --working-tree [OUTFILE]  |  review-package BASE HEAD [OUTFILE]" >&2
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+  echo "usage: review-package --working-tree PLAN_FILE [OUTFILE]  |  review-package PLAN_FILE BASE HEAD [OUTFILE]" >&2
   exit 2
 fi
 
-base=$1
-head=$2
+plan=$1
+base=$2
+head=$3
+[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
 
 git rev-parse --verify --quiet "$base" >/dev/null || { echo "bad BASE: $base" >&2; exit 2; }
 git rev-parse --verify --quiet "$head" >/dev/null || { echo "bad HEAD: $head" >&2; exit 2; }
 
-if [ $# -eq 3 ]; then
-  out=$3
+if [ $# -eq 4 ]; then
+  out=$4
 else
-  out="$(workspace)/review-$(git rev-parse --short "$base")..$(git rev-parse --short "$head").diff"
+  out="$(workspace "$plan")/review-$(git rev-parse --short "$base")..$(git rev-parse --short "$head").diff"
 fi
 
 {
