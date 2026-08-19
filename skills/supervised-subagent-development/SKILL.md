@@ -1,6 +1,6 @@
 ---
-name: subagent-driven-development
-description: Use when executing implementation plans with independent tasks in the current session
+name: supervised-subagent-development
+description: Use when executing implementation plans with a human approving every commit; for unsupervised execution use subagent-driven-development
 disable-model-invocation: true
 ---
 
@@ -17,7 +17,7 @@ ledger and the tool results carry the record.
 
 **Human review workflow:** After implementer completes work and both reviews (spec + quality) pass, STOP and present the changes for human review. Only after human approval should you commit. This happens once per task before moving to the next task.
 
-**For throwaway/prototype work:** If the code won't be peer-reviewed or go to production (personal tools, prototypes, throwaway exploratory code), see **superpowers:prototype-driven-development** — same workflow without the human gates.
+**For unsupervised work:** If you do not want to approve every commit (personal tools, prototypes, throwaway exploratory code), see **superpowers:subagent-driven-development** — the autonomous workflow, with its own five-round fix loop and final review.
 
 **Rulings, not stalls — between the gates.** The human gate is the one place
 a task waits. Everywhere else, a running plan does not stall: conflicts,
@@ -477,10 +477,7 @@ re-deriving the branch diff with git commands. Point it at the ledger's
 deferred-minor lines so it can triage which must be fixed before merge.
 
 **Run:** `/code-review` with that package. The `/code-review` command has its
-own logic — run it as instructed and wait for the response. It dispatches on
-the most capable available model (see Model Selection); the template it uses
-is superpowers:requesting-code-review's
-[code-reviewer.md](../requesting-code-review/code-reviewer.md).
+own logic — run it as instructed and wait for the response.
 
 **After the debate completes:**
 - If there are surviving findings, present them to your human partner and get
@@ -716,7 +713,7 @@ Done! Using superpowers:finishing-a-development-branch.
 
 **Required workflow skills:**
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:requesting-code-review** - Code review template for the final whole-branch review
+- **superpowers:requesting-code-review** - Review rubric this skill's reviewers draw on
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks
 
 **Subagents should use:**
@@ -724,4 +721,4 @@ Done! Using superpowers:finishing-a-development-branch.
 
 **Alternative workflows:**
 - **superpowers:executing-plans** - Use for parallel session instead of same-session execution
-- **superpowers:prototype-driven-development** - Use for throwaway/prototype work without human review gates
+- **superpowers:subagent-driven-development** - Use for unsupervised execution without human review gates
