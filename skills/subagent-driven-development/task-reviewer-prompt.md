@@ -1,22 +1,24 @@
 # Task Reviewer Prompt Template
 
 Use this template when dispatching a task reviewer subagent. The reviewer
-reads the task's diff once and returns two verdicts: spec compliance and
-code quality.
+reads the task's diff once and returns three verdicts: spec compliance,
+code quality, and writing quality.
 
 **Purpose:** Verify one task's implementation matches its requirements (nothing
-more, nothing less) and is well-built (clean, tested, maintainable)
+more, nothing less), is well-built (clean, tested, maintainable), and that the
+prose it changed is clear
 
 ```
 Subagent (general-purpose):
-  description: "Review Task N (spec + quality)"
+  description: "Review Task N (spec + quality + writing)"
   model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
          model silently inherits the session's most expensive one]
   prompt: |
     You are reviewing one task's implementation: first whether it matches its
-    requirements, then whether it is well-built. This is a task-scoped gate,
-    not a merge review — a broad whole-branch review happens separately after
-    all tasks are complete.
+    requirements, then whether it is well-built, then whether the prose it
+    changed is clear. This is a task-scoped gate, not a merge review — a
+    broad whole-branch review happens separately after all tasks are
+    complete.
 
     ## What Was Requested
 
@@ -120,6 +122,22 @@ Subagent (general-purpose):
     (See the `Comment hygiene` section of the `code-reviewer` agent for the
     full rule and Red Flags.)
 
+    ## Part 3: Writing Quality
+
+    Judge only prose the diff changed — comments, docstrings, and
+    product-facing docs. Unchanged prose is out of scope.
+
+    - Does it follow ASD-STE100 Simplified Technical English: one
+      instruction per sentence, approved vocabulary, active voice, present
+      tense?
+    - Every Simplified Technical English finding MUST cite its STE rule
+      number and supply compliant replacement text. The coordinator applies
+      your replacement verbatim and has no STE knowledge of its own, so a
+      finding without a replacement cannot be acted on.
+
+    Rate these on the same Critical/Important/Minor scale as Part 2. Wording
+    that misleads the reader is Important; style polish is Minor.
+
     Your report should point at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare
     "yes." A tight report that cites lines gives the controller everything
@@ -191,7 +209,9 @@ Subagent (general-purpose):
   the controller's context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
-(Critical/Important/Minor), Task quality verdict
+(Critical/Important/Minor, writing-quality findings carrying an STE rule
+number and replacement text), Task quality verdict
 
-A fix dispatch can address spec gaps and quality findings together;
-re-review after fixes covers both verdicts.
+One fix dispatch addresses spec gaps, quality findings, and writing findings
+together. The human gate verifies the applied fixes — there is no per-task
+re-review.

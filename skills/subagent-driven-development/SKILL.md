@@ -42,7 +42,7 @@ digraph when_to_use {
 **vs. Executing Plans (parallel session):**
 - Same session (no context switch)
 - Fresh subagent per task (no context pollution)
-- Task review after each task (spec compliance + code quality), broad review at the end
+- Task review after each task (spec compliance + code quality + writing quality), broad review at the end
 - Human review gate before each commit (coordinator presents changes, human approves, coordinator commits)
 
 ## The Process
@@ -52,15 +52,15 @@ digraph process {
     rankdir=TB;
 
     subgraph cluster_per_task {
-        label="Per Task";
+        label="Per Task (single-pass)";
         "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer subagent implements, tests, self-reviews (NO COMMIT)" [shape=box];
         "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" [shape=box];
-        "Task reviewer reports spec ✅ and quality approved?" [shape=diamond];
-        "Dispatch fix subagent for Critical/Important findings" [shape=box];
-        "Present changes to human for review" [shape=box style=filled fillcolor=yellow];
+        "Coordinator triages findings (once)" [shape=box];
+        "Coordinator dispatches implementer to apply accepted fixes (once)" [shape=box];
+        "Present applied-fix diff + summary to human for review" [shape=box style=filled fillcolor=yellow];
         "Human approves?" [shape=diamond style=filled fillcolor=yellow];
         "Address human feedback" [shape=box];
         "Coordinator commits changes" [shape=box];
@@ -80,13 +80,12 @@ digraph process {
     "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
     "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, self-reviews (NO COMMIT)" [label="no"];
     "Implementer subagent implements, tests, self-reviews (NO COMMIT)" -> "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)";
-    "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" -> "Task reviewer reports spec ✅ and quality approved?";
-    "Task reviewer reports spec ✅ and quality approved?" -> "Dispatch fix subagent for Critical/Important findings" [label="no"];
-    "Dispatch fix subagent for Critical/Important findings" -> "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" [label="re-review"];
-    "Task reviewer reports spec ✅ and quality approved?" -> "Present changes to human for review" [label="yes"];
-    "Present changes to human for review" -> "Human approves?";
+    "Write diff file, dispatch task reviewer subagent (./task-reviewer-prompt.md)" -> "Coordinator triages findings (once)";
+    "Coordinator triages findings (once)" -> "Coordinator dispatches implementer to apply accepted fixes (once)";
+    "Coordinator dispatches implementer to apply accepted fixes (once)" -> "Present applied-fix diff + summary to human for review";
+    "Present applied-fix diff + summary to human for review" -> "Human approves?";
     "Human approves?" -> "Address human feedback" [label="no"];
-    "Address human feedback" -> "Present changes to human for review" [label="re-present"];
+    "Address human feedback" -> "Present applied-fix diff + summary to human for review" [label="re-present"];
     "Human approves?" -> "Coordinator commits changes" [label="yes"];
     "Coordinator commits changes" -> "Mark task complete in todo list and progress ledger";
     "Mark task complete in todo list and progress ledger" -> "More tasks remain?";
@@ -112,6 +111,84 @@ each finding beside the plan text that mandates it, asking which governs —
 before execution begins, not one interrupt per discovery mid-plan. If the
 scan is clean, proceed without comment. The review loop remains the net for
 conflicts that only emerge from implementation.
+
+## The Per-Task Review Cycle Is Single-Pass
+
+The task reviewer runs **once**. The coordinator triages its findings and
+dispatches the implementer **once** to fix them, then the human gate
+verifies. There are no per-task re-review loops.
+
+**Scope guardrail:** single-pass applies ONLY to the per-task cycle. The
+final `/code-review` (after all tasks) keeps its own multi-pass re-review
+loop, and `/council` is untouched. Never remove the `Run /code-review →
+Surviving findings? → fix → re-review` edges or the "Skip the final
+`/code-review`" Red Flag.
+
+### The coordinator
+
+"The coordinator" is the main SDD orchestrator session — the top-level agent
+that reads the plan, dispatches subagents, and runs `git commit`. It holds
+`task` (to dispatch) and `bash`/`edit` **only to commit and orchestrate —
+never to author code or fix findings**. It turns findings into fixes ONLY by
+dispatching the `implementer` subagent (consistent with the existing
+invariant that the coordinator delegates all code changes). Triage is a
+decision, not an edit.
+
+### Triage rule
+
+The task reviewer returns one report carrying three kinds of finding: spec
+compliance, code quality, and writing quality. Triage them together in one
+pass:
+
+- Apply all Critical and Important findings, spec and quality alike.
+- Apply Minor findings too, EXCEPT a Minor is dropped only when (a) applying
+  it would conflict with a Critical/Important finding, or (b) it targets
+  generated or third-party code. List every dropped Minor in the human-gate
+  summary as "not applied, reason: [a|b]".
+- A genuinely ambiguous spec gap (the fix depends on intent the plan does
+  not settle) is NOT guessed — surface it at the human gate.
+- **Conflict resolution (narrow):** a conflict exists only when applying one
+  finding's fix would violate another's rule (e.g. a code-quality finding
+  wants a "why" comment; a writing-quality finding rejects its wording).
+  Mere colocation is NOT a conflict. On a real conflict, satisfy the
+  higher-severity finding and adopt the lower-severity finding's own
+  supplied replacement text to reword it. The coordinator needs no STE
+  knowledge — each writing-quality finding carries a compliant replacement.
+- Dispatch the implementer once with the triaged, conflict-resolved list,
+  then present to the human gate.
+
+### Implementer dispatch for applying fixes
+
+The coordinator applies fixes by dispatching the existing `implementer`
+subagent via `implementer-prompt.md` — no new template. The triaged finding
+list (each item: `file:line`, what to change, suggested replacement text) is
+the task description. The implementer edits; it does not re-derive findings.
+
+### Reviewer failure
+
+SDD's implementer BLOCKED cases do not map to a read-only reviewer. Use this
+instead:
+
+- **Errored / timed-out reviewer:** re-dispatch once. If it fails again,
+  surface the failure at the human gate and let your human partner decide
+  whether to proceed. Do not silently skip the review.
+- **Malformed output** (a finding missing `file:line`, severity, or — for a
+  writing-quality finding — a replacement): treat that finding as unusable,
+  list it in the human-gate summary as "could not auto-apply," and apply the
+  well-formed findings normally.
+- **Finding without a usable replacement:** the coordinator cannot author a
+  fix (no STE knowledge), so it surfaces the finding to the human gate
+  rather than dropping it silently.
+- **Unreconcilable conflict:** if two Critical findings genuinely cannot
+  both be satisfied, do NOT guess — present both to your human partner at
+  the gate.
+
+### Human gate presentation
+
+Because single-pass makes the human gate the sole verification of applied
+fixes, present the **actual diff of what the coordinator applied** (not just
+a "spec ✅ / quality ✅" stat line), plus the fix summary (which findings
+applied, which dropped and why, any items surfaced for a decision).
 
 ## Model Selection
 
@@ -170,8 +247,9 @@ The task reviewer may report "⚠️ Cannot verify from diff" items — requirem
 that live in unchanged code or span tasks. These do not block the rest of the
 review, but you must resolve each one yourself before marking the task
 complete: you hold the plan and cross-task context the reviewer
-lacks. If you confirm an item is a real gap, treat it as a failed spec
-review — send it back to the implementer and re-review.
+lacks. If you confirm an item is a real gap, fold it into the triage list as
+an Important spec finding — the single fix dispatch covers it and the human
+gate verifies it.
 
 ## Constructing Reviewer Prompts
 
@@ -184,10 +262,10 @@ final whole-branch review. When you fill a reviewer template:
   same code — the implementer's report carries the test evidence
 - Do not pre-judge findings for the reviewer — never instruct a reviewer to
   ignore or not flag a specific issue. If you believe a finding would be a
-  false positive, let the reviewer raise it and adjudicate it in the review
-  loop. If the prompt you are writing contains "do not flag," "don't treat X
-  as a defect," "at most Minor," or "the plan chose" — stop: you are
-  pre-judging, usually to spare yourself a review loop.
+  false positive, let the reviewer raise it and adjudicate it at triage. If
+  the prompt you are writing contains "do not flag," "don't treat X as a
+  defect," "at most Minor," or "the plan chose" — stop: you are pre-judging,
+  usually to spare yourself a fix dispatch.
 - The global-constraints block you hand the reviewer is its attention
   lens. Copy the binding requirements verbatim from the plan's Global
   Constraints section or the spec: exact values, exact formats, and the
@@ -209,10 +287,11 @@ final whole-branch review. When you fill a reviewer template:
   later dispatches — a real session's dispatch hit 42k chars of which 99%
   was pasted history. A fresh subagent needs its task, the interfaces it
   touches, and the global constraints. Nothing else.
-- Dispatch fix subagents for Critical and Important findings. Record Minor
-  findings in the progress ledger as you go, and point the final
-  whole-branch review at that list so it can triage which must be fixed
-  before merge. A roll-up nobody reads is a silent discard.
+- Dispatch fix subagents for Critical and Important findings, and for the
+  Minor findings the triage rule keeps. Record every dropped Minor in the
+  progress ledger as you go, and point the final whole-branch review at that
+  list so it can triage which must be fixed before merge. A roll-up nobody
+  reads is a silent discard.
 - A finding labeled plan-mandated — or any finding that conflicts with
   what the plan's text requires — is the human's decision, like any plan
   contradiction: present the finding and the plan text, ask which governs.
@@ -226,9 +305,9 @@ final whole-branch review. When you fill a reviewer template:
 - Every fix dispatch carries the implementer contract: the fix subagent
   re-runs the tests covering its change and reports the results. Name the
   covering test files in the dispatch — a one-line fix does not need the
-  whole suite. Before re-dispatching the reviewer, confirm the fix report
-  contains the covering tests, the command run, and the output; dispatch
-  the re-review once all three are present.
+  whole suite. Confirm the fix report contains the covering tests, the
+  command run, and the output before you open the per-task human gate, and
+  again before re-dispatching the final whole-branch reviewer.
 - If the final whole-branch review returns findings, dispatch ONE fix
   subagent with the complete findings list — not one fixer per finding.
   Per-finding fixers each rebuild context and re-run suites; a real
@@ -260,7 +339,8 @@ and is re-read on every later turn. Hand artifacts over as files:
   file, the report file, and the review package — plus the global
   constraints that bind the task.
 - Fix dispatches append their fix report (with test results) to the same
-  report file and return a short summary; re-reviews read the updated file.
+  report file and return a short summary; the final review's re-reviews read
+  the updated file.
 
 ## Durable Progress
 
@@ -286,7 +366,7 @@ a ledger file, not only in todos.
 ## Prompt Templates
 
 - [implementer-prompt.md](implementer-prompt.md) - Dispatch implementer subagent
-- [task-reviewer-prompt.md](task-reviewer-prompt.md) - Dispatch task reviewer subagent (spec compliance + code quality)
+- [task-reviewer-prompt.md](task-reviewer-prompt.md) - Dispatch task reviewer subagent (spec compliance + code quality + writing quality)
 - Final whole-branch review: use superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md)
 
 ## Example Workflow
@@ -361,22 +441,18 @@ Task reviewer: Spec ❌:
   - Missing: Progress reporting (spec says "report every 100 items")
   - Extra: Added --json flag (not requested)
   Issues (Important): Magic number (100)
+  Issues (Minor): comment uses "should"; replacement: "Adjust the interval
+    when the run is slow." (STE-7)
 
-[Dispatch fix subagent with all findings]
-Fixer: Removed --json flag, added progress reporting, extracted PROGRESS_INTERVAL constant
+[Coordinator triages all three kinds of finding, dispatches implementer once]
+Implementer: Removed --json flag, added progress reporting, extracted
+  PROGRESS_INTERVAL constant, reworded comment
 
-[Task reviewer reviews again]
-Task reviewer: Spec ✅. Task quality: Approved.
-
-You: [Present changes to human]
-  Changes ready for review:
-  - Modified: src/recovery.sh
-  - Added: tests/recovery.test.sh
-  - All tests passing (8/8)
-  - Spec compliant ✅
-  - Quality approved ✅
-  
-  Review and approve to commit?
+You: [Present applied-fix diff + summary to human]
+  Modified: src/recovery.sh; Added: tests/recovery.test.sh (8/8 passing)
+  Applied: progress reporting restored, --json removed, PROGRESS_INTERVAL
+  extracted, comment reworded (STE-7). Dropped: none.
+  git diff shown below. Review and approve to commit?
 
 Human: Approved. Commit it.
 
@@ -448,17 +524,17 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 
 **Quality gates:**
 - Self-review catches issues before handoff
-- Task review carries two verdicts: spec compliance and code quality (on uncommitted code)
+- Task review carries three verdicts in one pass: spec compliance, code quality, and writing quality; the coordinator triages and applies fixes once before the human gate (all on uncommitted code)
 - Human review before each commit
 - Multi-model critical final code review (findings must survive cross-examination)
-- Review loops ensure fixes actually work
+- Per-task cycle is single-pass; the human gate verifies applied fixes. The final `/code-review` re-reviews until clean.
 - Spec compliance prevents over/under-building
 - Code quality ensures implementation is well-built
 
 **Cost:**
 - More subagent invocations (implementer + reviewer per task)
 - Controller does more prep work (extracting all tasks upfront)
-- Review loops add iterations
+- Per-task review is one reviewer dispatch plus at most one fix dispatch; single-pass removes the previously unbounded per-task re-review iterations.
 - Human review adds latency per task
 - But catches issues early (cheaper than debugging later)
 
@@ -477,8 +553,8 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 - Add or expand comments in a task's code blocks. The plan's code-block comments are intentionally concise; pass them through unchanged and keep rationale in the surrounding prose, not in the code.
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
-- Accept "close enough" on spec compliance (reviewer found spec issues = not done)
-- Skip review loops (reviewer found issues = implementer fixes = review again)
+- Accept "close enough" on spec compliance (task reviewer found spec issues = not done)
+- Add per-task re-review loops. The per-task review cycle is single-pass: the coordinator dispatches the implementer once to fix findings, then the human gate verifies. (This does NOT apply to the final `/code-review`, which keeps its re-review loop.)
 - Let implementer self-review replace actual review (both are needed)
 - Tell a reviewer what not to flag, or pre-rate a finding's severity in the
   dispatch prompt ("treat it as Minor at most") — the plan's example code is
@@ -495,11 +571,10 @@ The `/code-review` command has its own logic, just run it as instructed and wait
 - Provide additional context if needed
 - Don't rush them into implementation
 
-**If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
+**If a per-task reviewer finds issues:**
+- The coordinator triages, then dispatches the implementer once to apply the accepted fixes
+- The human gate verifies the applied fixes (no per-task re-review)
+- The final `/code-review` still re-reviews until clean — that loop is unchanged
 
 **If human feedback received:**
 - Address concerns fully
