@@ -60,4 +60,4 @@ Concern prompt:
 - Planning source: superpowers:writing-plans
 - RED/GREEN rigor: superpowers:test-driven-development
 - Terminal handoff: superpowers:finishing-a-development-branch
-- Alternative execution workflows: superpowers:subagent-driven-development, superpowers:prototype-driven-development, superpowers:executing-plans
+- Alternative execution workflows: superpowers:supervised-subagent-development, superpowers:subagent-driven-development, superpowers:executing-plans

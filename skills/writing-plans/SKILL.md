@@ -33,14 +33,14 @@ Mode lock: TDD ping-pong
 **Canonical values:**
 
 - `TDD ping-pong`
-- `agentic production`
-- `agentic prototype`
+- `agentic supervised`
+- `agentic autonomous`
 
 **Canonical lock lines:**
 
 - `Mode lock: TDD ping-pong`
-- `Mode lock: agentic production`
-- `Mode lock: agentic prototype`
+- `Mode lock: agentic supervised`
+- `Mode lock: agentic autonomous`
 
 **Rules:**
 
@@ -50,8 +50,8 @@ Mode lock: TDD ping-pong
 - Normalization: trim whitespace, case-fold for comparison, and strip wrapping markdown (backticks, asterisks) and surrounding angle brackets if present.
 - If the value is not one of the canonical values after normalization, treat mode lock as missing and ask once.
 - `TDD ping-pong` → emit test-only plan format with TDD-mode header (see Plan Document Header and TDD Ping-Pong Task Structure below).
-- `agentic production` → emit standard plan format with non-TDD header.
-- `agentic prototype` → emit standard plan format with non-TDD header.
+- `agentic supervised` → emit standard plan format with non-TDD header.
+- `agentic autonomous` → emit standard plan format with non-TDD header.
 
 ## File Structure
 
@@ -75,7 +75,9 @@ independently testable deliverable.
 
 ## Bite-Sized Task Granularity
 
-Use this structure for non-TDD modes (`agentic production` and `agentic prototype`).
+Use this structure for non-TDD modes (`agentic supervised` and `agentic autonomous`).
+The human-review steps below apply to `agentic supervised` only; under
+`agentic autonomous`, drop them and commit directly once verification passes.
 
 **Each step is one action (2-5 minutes):**
 
@@ -108,14 +110,14 @@ Use this structure for non-TDD modes (`agentic production` and `agentic prototyp
 ---
 ```
 
-### For `agentic production` or `agentic prototype` modes:
+### For `agentic supervised` or `agentic autonomous` modes:
 
 ```markdown
 # [Feature Name] Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Choose appropriate workflow:
-> - superpowers:subagent-driven-development (production code with human review)
-> - superpowers:prototype-driven-development (throwaway/prototype code, no human gates)
+> - superpowers:supervised-subagent-development (human approves every commit)
+> - superpowers:subagent-driven-development (autonomous, no human gates)
 > - superpowers:executing-plans (fallback if subagents unavailable)
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -314,8 +316,8 @@ Mode lock is `<preset>`, so I will use `<mapped-skill>` for execution.
 Routing map:
 
 - `TDD ping-pong` → invoke `superpowers:tdd-ping-pong`
-- `agentic production` → invoke `superpowers:subagent-driven-development`
-- `agentic prototype` → invoke `superpowers:prototype-driven-development`
+- `agentic supervised` → invoke `superpowers:supervised-subagent-development`
+- `agentic autonomous` → invoke `superpowers:subagent-driven-development`
 
 **If mode lock is absent (direct invocation of writing-plans):**
 
@@ -327,8 +329,8 @@ Plan complete and saved to `docs/superpowers/plans/<filename>.md`.
 Which execution mode should I use?
 
 1. **TDD ping-pong** - Test-driven cycles with human review gates
-2. **agentic production** - Fresh subagent per task, automated review, human gates
-3. **agentic prototype** - Subagent per task, automated review, no human gates
+2. **agentic supervised** - Fresh subagent per task, automated review, human approves every commit
+3. **agentic autonomous** - Fresh subagent per task, automated review, no human gates
 ```
 
 Wait for their choice, lock it, then invoke the mapped skill with the same routing map above.

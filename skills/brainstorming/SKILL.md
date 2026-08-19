@@ -103,8 +103,8 @@ your path and complete them in order.
 9. **User reviews written spec** — ask user to review the spec file before proceeding
 10. **Choose implementation preset** — ask one combined choice before planning:
     - `TDD ping-pong`
-    - `agentic production`
-    - `agentic prototype`
+    - `agentic supervised`
+    - `agentic autonomous`
 11. **Transition to implementation** — emit mode lock and invoke writing-plans skill
 
 ## Process Flow
@@ -240,21 +240,21 @@ Wait for the user's response. If they request changes, make them and re-run the 
 **Mode Lock Gate:** After spec approval, ask exactly one preset choice:
 
 1. `TDD ping-pong`
-2. `agentic production`
-3. `agentic prototype`
+2. `agentic supervised`
+3. `agentic autonomous`
 
 Then emit this line immediately before invoking `writing-plans` as a bare paragraph with no markdown decoration. Use exactly one of these canonical values:
 
 - `Mode lock: TDD ping-pong`
-- `Mode lock: agentic production`
-- `Mode lock: agentic prototype`
+- `Mode lock: agentic supervised`
+- `Mode lock: agentic autonomous`
 
 `writing-plans` treats this mode lock as authoritative and must not ask a duplicate preset question.
 
 **Implementation:**
 
 - Invoke the writing-plans skill to create a detailed implementation plan
-- **Note:** The human partner chooses one preset before planning: `TDD ping-pong`, `agentic production`, or `agentic prototype`. Planning and execution routing must follow that locked preset.
+- **Note:** The human partner chooses one preset before planning: `TDD ping-pong`, `agentic supervised`, or `agentic autonomous`. Planning and execution routing must follow that locked preset.
 - Do NOT invoke any other skill. writing-plans is the next step.
 
 ## Visual Companion

@@ -13,8 +13,8 @@ Load plan, review critically, execute all tasks, report when complete.
 **Announce at start:** "I'm using the executing-plans skill to implement this plan."
 
 **Note:** Tell your human partner that Superpowers works much better with access to subagents (Claude Code, Codex CLI, Codex App, Copilot CLI, and Gemini CLI all qualify; see the per-platform tool refs in `../using-superpowers/references/`). If subagents are available, choose the appropriate workflow:
-- **superpowers:subagent-driven-development** - For production code (with human review gates)
-- **superpowers:prototype-driven-development** - For throwaway/prototype work (automated reviews, no human gates)
+- **superpowers:supervised-subagent-development** - When you want to approve every commit
+- **superpowers:subagent-driven-development** - Autonomous execution, no human gates
 
 ## The Process
 
